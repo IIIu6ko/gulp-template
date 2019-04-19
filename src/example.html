@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <meta name="description" content="description">
+    <meta name="keywords" content="keywords">
+    <meta name="format-detection" content="telephone=no">
+
+    <title>example</title>
+
+    <!-- styles -->
+    <link rel="stylesheet" href="libs/normalize.css/normalize.css">
+    <link rel="stylesheet" href="css/styles.css">
+
+    <!--[if lte IE 10]><script src="http://phpbbex.com/oldies/oldies.js" charset="utf-8"></script><![endif]-->
+
+    <style>
+      .svg {
+        width: 100px;
+        height: 100px;
+      }
+
+      body > h2 {
+        margin-top: 100px;
+      }
+    </style>
+
+  </head>
+  <body class="page">
+    <h1>Примеры блоков</h1>
+
+    <!-- tabs -->
+    <h2>Табы</h2>
+    <div class="tabs">
+      <nav class="tabs__nav">
+        <button class="tabs__button" onclick="openTab(event, 'London', 400)">London</button>
+        <button class="tabs__button" onclick="openTab(event, 'Paris', 400)">Paris</button>
+        <button class="tabs__button" onclick="openTab(event, 'Tokyo', 400)">Tokyo</button>
+      </nav>
+      <div class="tabs__content" id="London">
+        <h3>London</h3>
+        <p>London is the capital city of England.</p>
+      </div>
+
+      <div class="tabs__content" id="Paris">
+        <h3>Paris</h3>
+        <p>Paris is the capital of France.1</p>
+      </div>
+
+      <div class="tabs__content" id="Tokyo">
+        <h3>Tokyo</h3>
+        <p>Tokyo is the capital of Japan.</p>
+      </div>
+    </div>
+
+    <!-- svg -->
+    <h2>SVG</h2>
+    <svg class="svg"><use xlink:href="imgs/sprite.svg#bedrooms"></use></svg>
+
+    <!-- rating -->
+    <h2>Рейтинг</h2>
+    <div class="rating">
+      <label class="rating__item">
+        <input class="rating__input" type="radio" name="rating1" value="1">
+        <svg class="rating__icon"><use xlink:href="imgs/sprite.svg#balloon"></use></svg>
+      </label>
+      <label class="rating__item">
+        <input class="rating__input" type="radio" name="rating1" value="2">
+        <svg class="rating__icon"><use xlink:href="imgs/sprite.svg#balloon"></use></svg>
+      </label>
+      <label class="rating__item">
+        <input class="rating__input" type="radio" name="rating1" value="3" checked>
+        <svg class="rating__icon"><use xlink:href="imgs/sprite.svg#balloon"></use></svg>
+      </label>
+      <label class="rating__item">
+        <input class="rating__input" type="radio" name="rating1" value="4">
+        <svg class="rating__icon"><use xlink:href="imgs/sprite.svg#balloon"></use></svg>
+      </label>
+      <label class="rating__item">
+        <input class="rating__input" type="radio" name="rating1" value="5">
+        <svg class="rating__icon"><use xlink:href="imgs/sprite.svg#balloon"></use></svg>
+      </label>
+    </div>
+
+    <!-- libs scripts -->
+    <script src="libs/jquery/dist/jquery.min.js"></script>
+    <script src="libs/object-fit-images/dist/ofi.min.js"></script>
+    <script src="libs/svg4everybody/dist/svg4everybody.min.js"></script>
+
+    <!-- custom scipts -->
+    <script src="js/page/page.js"></script>
+    <script src="js/tabs/tabs.js"></script>
+    <script src="js/rating/rating.js"></script>
+  </body>
+</html>

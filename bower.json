@@ -1,0 +1,30 @@
+{
+  "name": "bem",
+  "description": "",
+  "main": "",
+  "authors": [
+    "IIIu6ko"
+  ],
+  "license": "ISC",
+  "homepage": "",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "jquery": "^3.3.1",
+    "normalize.css": "^8.0.0",
+    "object-fit-images": "https://github.com/bfred-it/object-fit-images.git#^3.2.3",
+    "svg4everybody": "https://github.com/jonathantneal/svg4everybody.git#^2.1.9",
+    "jquery-custom-select": "kvlsrg-jquery-custom-select#^1.6.1",
+    "masonry-layout": "masonry#^4.2.2",
+    "css-hamburgers": "^1.1.3",
+    "swiper": "^4.5.0",
+    "jQuery": "^3.3.1",
+    "nouislider": "^13.1.4"
+  }
+}
