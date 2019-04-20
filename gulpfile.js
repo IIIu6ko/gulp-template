@@ -22,6 +22,9 @@ const smushit      = require("gulp-smushit"); // Оптимизирует изо
 // Работа с SVG-спрайтами.
 const svgSprite    = require("gulp-svg-sprite"); // Спрайты из SVG.
 const svgo         = require("gulp-svgo");
+const cheerio      = require("gulp-cheerio");
+const cleanSvg     = require("gulp-cheerio-clean-svg");
+const replace      = require("gulp-replace"); // Заменяет одно на другое.
 
 const dist         = argv.dist;
 
@@ -233,8 +236,21 @@ gulp.task("cleanManifest", function(c) {
 https://www.youtube.com/watch?v=ihAHwkl0KAI и https://habrahabr.ru/post/272505/ */
 gulp.task("svg", function() {
   return gulp.src("src/blocks/svg-sprite/*.svg")
+
     // Оптимизируем.
-    .pipe(svgo())
+    .pipe(svgo({
+      plugins: [{
+        convertStyleToAttrs: false
+      }]
+    }))
+
+    // Удаляет атрибуты из svg файлов, чтобы можно было их менять с помощью css.
+    .pipe(cheerio(cleanSvg({
+      attributes: ["style", "fill-rule", "clip-rule", "fill"]
+    })))
+
+    // У cheerio есть один баг — иногда он преобразовывает символ '>' в кодировку '&gt;'.
+    .pipe(replace("&gt;", ">"))
 
     // Делаем спрайт.
     .pipe(svgSprite({
@@ -266,7 +282,7 @@ gulp.task("watch", function(c) {
 
     // Наблюдает за изображениями. При добавлении - переносит в src/build/imgs, при удалении - удаляет из src/build/imgs.
     // https://github.com/gulpjs/gulp/blob/4.0/docs/recipes/handling-the-delete-event-on-watch.md
-    gulp.watch("src/blocks/**/*.{jpg,jpeg,png,gif,svg}", gulp.series("imgs", "imgsSvg")).on("unlink", function(filepath) {
+    gulp.watch(["src/blocks/**/*.{jpg,jpeg,png,gif,svg}", "!src/blocks/svg-sprite/*.svg", "!src/blocks/fonts/**/*.svg"], gulp.series("imgs", "imgsSvg")).on("unlink", function(filepath) {
       var filePathFromSrc = path.relative(path.resolve("src/blocks/"), filepath);
       var destFilePath = path.resolve(buildImgs, filePathFromSrc);
       del.sync(destFilePath);
