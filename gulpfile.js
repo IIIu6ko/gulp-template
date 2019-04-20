@@ -1,5 +1,3 @@
-"use strict";
-
 const gulp         = require("gulp"); // Подключает сам gulp.
 const browserSync  = require("browser-sync"); // Автоматическая перезагрузка страницы.
 const sourcemaps   = require("gulp-sourcemaps"); // Создаёт soursemaps.
@@ -18,14 +16,12 @@ const postcss      = require("gulp-postcss");
 const mqpacker     = require("css-mqpacker"); // Группирует медиазапросы.
 const concat       = require("gulp-concat");
 const fileinclude  = require("gulp-file-include");
+const autoprefixer = require("gulp-autoprefixer");
+const smushit      = require("gulp-smushit"); // Оптимизирует изображения
 
 // Работа с SVG-спрайтами.
-const cheerio      = require("gulp-cheerio"); // Удаляет атрибуты из svg файлов, чтобы можно было их менять с помощью CSS.
 const svgSprite    = require("gulp-svg-sprite"); // Спрайты из SVG.
-const replace      = require("gulp-replace"); // Заменяет одно на другое.
-
-const smushit      = require("gulp-smushit"); // Оптимизирует изображения
-const autoprefixer = require('gulp-autoprefixer');
+const svgo         = require("gulp-svgo");
 
 const dist         = argv.dist;
 
@@ -35,7 +31,6 @@ const distJs       = "dist/js";
 const distImgs     = "dist/imgs";
 const distFonts    = "dist/fonts";
 const distSvg      = "dist/imgs";
-const distFiles    = "dist/files";
 
 const buildHtml    = "src/build";
 const buildCss     = "src/build/css";
@@ -43,7 +38,6 @@ const buildJs      = "src/build/js";
 const buildImgs    = "src/build/imgs";
 const buildFonts   = "src/build/fonts";
 const buildSvg     = "src/build/imgs";
-const buildFiles    = "src/build/files";
 
 gulp.task("browser-sync", function(c) {
   if (!dist) {
@@ -84,17 +78,6 @@ gulp.task("html", function() {
     .pipe(gulpif(!dist, browserSync.stream())); // Если нет флага --dist или --github.
 });
 
-gulp.task("php", function() {
-  return gulp.src("src/*.php", {base: "src"})
-
-    // Выгрузка
-    .pipe(gulpif(dist, gulp.dest(distHtml), gulp.dest(buildHtml)))
-
-    // browserSync
-    .pipe(gulpif(!dist, browserSync.stream())); // Если нет флага --dist или --github.
-});
-
-
 gulp.task("css", function() {
   return gulp.src("src/blocks/main.scss")
 
@@ -116,7 +99,7 @@ gulp.task("css", function() {
 
     // autoprefixer
     .pipe(autoprefixer({
-      browsers: ['last 10 versions'],
+      browsers: ["last 10 versions"],
       cascade: false
     }))
 
@@ -151,7 +134,7 @@ gulp.task("css", function() {
     .pipe(gulpif(!dist, browserSync.stream())); // Если нет флага --dist или --github.
 });
 
-gulp.task("jsCommon", function() {
+gulp.task("jsCustom", function() {
   return gulp.src("src/blocks/**/*.js")
     // Приписывает хэш в конце файла(styles-004da46867.css). Чтобы при обновлении сайта не приходилось очищать кэш.
     .pipe(gulpif(dist, // Если есть флаг --dist.
@@ -182,11 +165,11 @@ gulp.task("jsCommon", function() {
 gulp.task("imgs", function() {
   return gulp.src("src/blocks/**/*.{jpg,jpeg,png,gif,ico}")
 
-    /* .pipe(gulpif(dist, // Если есть флаг --dist.
+    .pipe(gulpif(dist, // Если есть флаг --dist.
       smushit({
         verbose: true // Подробный режим
       })
-    )) */
+    ))
 
     // Если флаг --dist, то выгружает по пути distImgs, иначе по пути buildImgs.
     .pipe(gulpif(dist, gulp.dest(distImgs), gulp.dest(buildImgs)))
@@ -195,16 +178,7 @@ gulp.task("imgs", function() {
     .pipe(gulpif(!dist, browserSync.stream())); // Если нет флага --dist или --github.
 });
 
-gulp.task("pdf", function() {
-  return gulp.src("src/blocks/**/*.pdf")
-
-    .pipe(gulpif(dist, gulp.dest(distFiles), gulp.dest(buildFiles)))
-
-    // Browsersync
-    .pipe(gulpif(!dist, browserSync.stream())); // Если нет флага --dist или --github.
-});
-
-// Из-за того, что shushit не умеет обрабатывать svg пришлось сделать для них отдельный таск
+// Из-за того, что smushit не умеет обрабатывать svg пришлось сделать для них отдельный таск.
 gulp.task("imgsSvg", function() {
   return gulp.src(["src/blocks/**/*.svg", "!src/blocks/svg-sprite/*.svg", "!src/blocks/fonts/**/*.svg"])
 
@@ -254,31 +228,13 @@ gulp.task("cleanManifest", function(c) {
 });
 
 
-/* Собирает все svg файлы и сохраняет их в файл svgSprite.js.
+/* Собирает все svg файлы и сохраняет их в файл sprite.svg.
 <svg class="inline-svg-icon browser"><use xlink:href="imgs/sprite.svg#baseball"></use></svg>
 https://www.youtube.com/watch?v=ihAHwkl0KAI и https://habrahabr.ru/post/272505/ */
 gulp.task("svg", function() {
   return gulp.src("src/blocks/svg-sprite/*.svg")
-
-    .pipe(cheerio({
-      run: function($) {
-        $("[id]").removeAttr("id");
-        $("[fill]").removeAttr("fill");
-        $("[clip]").removeAttr("clip");
-        $("[stroke]").removeAttr("stroke");
-        $("[mask]").removeAttr("mask");
-        $("[opacity]").removeAttr("opacity");
-        $("[width]").removeAttr("width");
-        $("[height]").removeAttr("height");
-        $("[class]").removeAttr("class");
-      },
-      parserOptions: {
-        xmlMode: true
-      }
-    }))
-
-    // У cheerio есть один баг — иногда он преобразовывает символ '>' в кодировку '&gt;'.
-    .pipe(replace("&gt;", ">"))
+    // Оптимизируем.
+    .pipe(svgo())
 
     // Делаем спрайт.
     .pipe(svgSprite({
@@ -304,10 +260,8 @@ gulp.task("svg", function() {
 gulp.task("watch", function(c) {
   if (!dist) { // Проверяет на наличие флага.
     gulp.watch(["src/*.html", "src/blocks/**/*.html"], gulp.series("html"));
-    gulp.watch("src/*.php", gulp.series("php"));
-    gulp.watch("src/blocks/**/*.pdf", gulp.series("pdf"));
     gulp.watch("src/blocks/**/*.scss", gulp.series("css"));
-    gulp.watch("src/blocks/**/*.js", gulp.series("jsCommon"));
+    gulp.watch("src/blocks/**/*.js", gulp.series("jsCustom"));
     gulp.watch("src/blocks/svg-sprite/*.svg", gulp.series("svg"));
 
     // Наблюдает за изображениями. При добавлении - переносит в src/build/imgs, при удалении - удаляет из src/build/imgs.
@@ -329,6 +283,10 @@ gulp.task("watch", function(c) {
   }
 });
 
-gulp.task("build", gulp.series("clean", "css", "libs", "jsCommon", "html", "php", "imgs", "imgsSvg", "fonts", "svg", "cleanManifest", "pdf"));
+gulp.task("build",
+  gulp.series(
+    "clean", "css", "libs", "jsCustom", "html", "imgs", "imgsSvg", "fonts", "svg", "cleanManifest"
+  )
+);
 
 gulp.task("default", gulp.series("build", gulp.parallel("watch", "browser-sync")));
