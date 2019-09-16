@@ -102,7 +102,6 @@ gulp.task("css", function() {
 
     // autoprefixer
     .pipe(autoprefixer({
-      browsers: ["last 10 versions"],
       cascade: false
     }))
 
