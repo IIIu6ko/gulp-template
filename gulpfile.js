@@ -26,6 +26,14 @@ const cheerio      = require("gulp-cheerio");
 const cleanSvg     = require("gulp-cheerio-clean-svg");
 const replace      = require("gulp-replace"); // Заменяет одно на другое.
 
+// deploy
+const gutil        = require("gulp-util"); // будет выводить уведомления
+const ftp          = require("vinyl-ftp");
+const ftpHost      = ""; // Хост для ftp-подключения
+const ftpUser      = ""; // Пользователь для ftp-подключения
+const ftpPass      = ""; // Пароль для ftp-подключения
+const ftpDest      = "/httpdocs/" + path.basename(__dirname); // Путь куда на хостинге будет выгружаться сайт (вторая часть - это название папки проекта)
+
 const dist         = argv.dist;
 
 const distHtml     = "dist";
@@ -270,6 +278,20 @@ gulp.task("svg", function() {
 
     // Выгрузка
     .pipe(gulpif(dist, gulp.dest(distSvg), gulp.dest(buildSvg)));
+});
+
+gulp.task("deploy", function() {
+  var conn = ftp.create({
+    host:      ftpHost,
+    user:      ftpUser,
+    password:  ftpPass,
+    parallel:  10,
+    log: gutil.log
+  });
+
+  var globs = ["dist/**"];
+  return gulp.src(globs, {buffer: false})
+  .pipe(conn.dest(ftpDest));
 });
 
 gulp.task("watch", function(c) {
