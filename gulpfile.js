@@ -17,7 +17,10 @@ const mqpacker     = require("css-mqpacker"); // Группирует медиа
 const concat       = require("gulp-concat");
 const fileinclude  = require("gulp-file-include");
 const autoprefixer = require("gulp-autoprefixer");
-const smushit      = require("gulp-smushit"); // Оптимизирует изображения
+
+// Работа с изображениями
+const webp         = require("gulp-webp"); // Конвертирует изображение в webp
+const smushit      = require("gulp-smushit"); // Сжатие изображений
 
 // Работа с SVG-спрайтами.
 const svgSprite    = require("gulp-svg-sprite"); // Спрайты из SVG.
@@ -188,6 +191,21 @@ gulp.task("imgs", function() {
     .pipe(gulpif(!dist, browserSync.stream())); // Если нет флага --dist или --github.
 });
 
+gulp.task("imgsWebp", function() {
+  return gulp.src("src/blocks/**/*.{jpg,jpeg,png,gif,ico}")
+
+    // Конвертирует изображение в webp и сжимает его
+    .pipe(webp({
+      quality: 75
+    }))
+
+    // Если флаг --dist, то выгружает по пути distImgs, иначе по пути buildImgs.
+    .pipe(gulpif(dist, gulp.dest(distImgs), gulp.dest(buildImgs)))
+
+    // Browsersync
+    .pipe(gulpif(!dist, browserSync.stream())); // Если нет флага --dist или --github.
+});
+
 // Из-за того, что smushit не умеет обрабатывать svg пришлось сделать для них отдельный таск.
 gulp.task("imgsSvg", function() {
   return gulp.src(["src/blocks/**/*.svg", "!src/blocks/svg-sprite/*.svg", "!src/blocks/fonts/**/*.svg"])
@@ -223,7 +241,7 @@ gulp.task("fonts", function() {
 
 gulp.task("clean", function() {
   if (dist) { // Если флаг --dist.
-    return del(["dist", "manifest", "src/build"]);
+    return del(["dist", "src/build"]);
   } else { // Если нет флага --dist.
     return del("src/build");
   }
@@ -300,6 +318,7 @@ gulp.task("watch", function(c) {
     gulp.watch("src/blocks/**/*.scss", gulp.series("css"));
     gulp.watch("src/blocks/**/*.js", gulp.series("jsCustom"));
     gulp.watch("src/blocks/svg-sprite/*.svg", gulp.series("svg"));
+    gulp.watch("src/libs/**/*.*", gulp.series("libs"));
 
     // Наблюдает за изображениями. При добавлении - переносит в src/build/imgs, при удалении - удаляет из src/build/imgs.
     // https://github.com/gulpjs/gulp/blob/4.0/docs/recipes/handling-the-delete-event-on-watch.md
