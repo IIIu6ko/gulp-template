@@ -1,26 +1,33 @@
 const gulp         = require("gulp"); // Подключает сам gulp.
 const browserSync  = require("browser-sync"); // Автоматическая перезагрузка страницы.
-const sourcemaps   = require("gulp-sourcemaps"); // Создаёт soursemaps.
 const del          = require("del"); // Удаляет что либо.
 const path         = require("path"); // Манипуляции с путями.
 const argv         = require("yargs").argv; // Проверяет наличие флага -production в консоли.
 const gulpif       = require("gulp-if"); // Условия.
 const combine      = require("stream-combiner2").obj; // Комбинирует пайпы. Для gulp-if.
-const htmlhint     = require("gulp-htmlhint");
 const revReplace   = require("gulp-rev-replace");
 const rev          = require("gulp-rev");
+const include      = require("gulp-include");
+
+// html.
+const htmlhint     = require("gulp-htmlhint");
+
+// css.
 const sass         = require("gulp-sass");
 const sortCSSmq    = require("sort-css-media-queries");
-const csscomb      = require("gulp-csscomb");
 const postcss      = require("gulp-postcss");
+const cssnano      = require("cssnano");
 const mqpacker     = require("css-mqpacker"); // Группирует медиазапросы.
-const concat       = require("gulp-concat");
-const fileinclude  = require("gulp-file-include");
 const autoprefixer = require("gulp-autoprefixer");
+const rename       = require("gulp-rename");
+const sourcemaps   = require("gulp-sourcemaps"); // Создаёт soursemaps.
 
-// Работа с изображениями
-const webp         = require("gulp-webp"); // Конвертирует изображение в webp
-const smushit      = require("gulp-smushit"); // Сжатие изображений
+// js.
+const uglify       = require("gulp-uglify");
+
+// Работа с изображениями.
+const webp         = require("gulp-webp"); // Конвертирует изображение в webp.
+const smushit      = require("gulp-smushit"); // Сжатие изображений.
 
 // Работа с SVG-спрайтами.
 const svgSprite    = require("gulp-svg-sprite"); // Спрайты из SVG.
@@ -29,35 +36,32 @@ const cheerio      = require("gulp-cheerio");
 const cleanSvg     = require("gulp-cheerio-clean-svg");
 const replace      = require("gulp-replace"); // Заменяет одно на другое.
 
-// deploy
-const gutil        = require("gulp-util"); // будет выводить уведомления
+// deploy.
+const gutil        = require("gulp-util"); // будет выводить уведомления.
 const ftp          = require("vinyl-ftp");
-const ftpHost      = ""; // Хост для ftp-подключения
-const ftpUser      = ""; // Пользователь для ftp-подключения
-const ftpPass      = ""; // Пароль для ftp-подключения
-const ftpDest      = "/httpdocs/" + path.basename(__dirname); // Путь куда на хостинге будет выгружаться сайт (вторая часть - это название папки проекта)
+const ftpHost      = ""; // Хост для ftp-подключения.
+const ftpUser      = ""; // Пользователь для ftp-подключения.
+const ftpPass      = ""; // Пароль для ftp-подключения.
+const ftpDest      = "/httpdocs/" + path.basename(__dirname); // Путь куда на хостинге будет выгружаться сайт. (вторая часть - это название папки проекта)
 
+// Флаги.cache
 const dist         = argv.dist;
+const min          = argv.min;
+const norev        = argv.norev;
 
-const distHtml     = "dist";
-const distCss      = "dist/css";
-const distJs       = "dist/js";
-const distImgs     = "dist/imgs";
-const distFonts    = "dist/fonts";
-const distSvg      = "dist/imgs";
-
-const buildHtml    = "src/build";
-const buildCss     = "src/build/css";
-const buildJs      = "src/build/js";
-const buildImgs    = "src/build/imgs";
-const buildFonts   = "src/build/fonts";
-const buildSvg     = "src/build/imgs";
+// Пути.
+const buildHtml     = "build";
+const buildCss      = "build/css";
+const buildJs       = "build/js";
+const buildImgs     = "build/imgs";
+const buildFonts    = "build/fonts";
+const buildSvg      = "build/imgs";
 
 gulp.task("browser-sync", function(c) {
   if (!dist) {
     browserSync.init({
       server: {
-        baseDir: "src/build"
+        baseDir: "build"
       },
       directory: false,
       notify: false,
@@ -75,104 +79,130 @@ gulp.task("html", function() {
     .pipe(htmlhint(".htmlhintrc"))
     .pipe(htmlhint.reporter())
 
-    .pipe(fileinclude())
+    // //=require "../blocks/page/page.js".
+    .pipe(include())
+      .on('error', console.log)
 
-    // Выгрузка
+    // Манифест.
+    // Если флаг --dist без --norev.
     .pipe(gulpif(dist,
-      combine(
-        revReplace({manifest: gulp.src("manifest/manifest.json", {allowEmpty: true})}),
-        gulp.dest(distHtml)
-      ),
-      combine(
-        gulp.dest(buildHtml)
+      gulpif(!norev,
+        revReplace({manifest: gulp.src("manifest/manifest.json", {allowEmpty: true})})
       )
     ))
 
-    // browserSync
-    .pipe(gulpif(!dist, browserSync.stream())); // Если нет флага --dist или --github.
+    // Выгрузка.
+    .pipe(gulp.dest(buildHtml))
+
+    // browserSync.
+    .pipe(gulpif(!dist, browserSync.stream())); // Если нет флага --dist.
 });
 
 gulp.task("css", function() {
-  return gulp.src("src/blocks/main.scss")
+  return gulp.src("src/blocks/styles.scss")
 
-    // Sourcemaps
-    .pipe(gulpif(!dist, sourcemaps.init())) // Если нет флага --dist или --github.
-
-    // Собирает все файлы в один.
-    .pipe(concat("styles.css"))
+    // Sourcemaps.
+    .pipe(gulpif(!dist, sourcemaps.init())) // Если нет флага --dist.
 
     // Компилируем SASS.
-    .pipe(sass())
+    .pipe(sass({outputStyle: 'expanded'}).on('error', sass.logError))
 
-    // Группируем медиазапросы
+    // Переименовываем в styles.css.
+    .pipe(rename("styles.css"))
+
+    // Если флаг --min, то сжимаем css.
+    .pipe(gulpif(min, 
+      postcss([
+        cssnano({
+          preset: "default"
+        })
+      ])
+    ))
+
+    // Группируем медиазапросы.
     .pipe(postcss([
       mqpacker({
-        sort: sortCSSmq // Кастомный метод сортировки
+        sort: sortCSSmq // Кастомный метод сортировки.
       })
     ]))
 
-    // autoprefixer
+    // autoprefixer.
     .pipe(autoprefixer({
       cascade: false
     }))
 
-    // Sourcemaps
-    .pipe(gulpif(!dist, sourcemaps.write())) // Если нет флага --dist или --github.
+    // Sourcemaps.
+    .pipe(gulpif(!dist, sourcemaps.write())) // Если нет флага --dist.
 
-    // csscomb или cssnano + rev.
-    .pipe(gulpif(dist, // Если есть флаг --dist.
-      combine(
-        csscomb(),
-        rev() /* Приписывает хэш в конце файла(styles-004da46867.css). Чтобы при обновлении сайта не приходилось очищать кэш. */
+    // Приписывает хэш в конце файла(styles-004da46867.css). Чтобы при обновлении сайта не приходилось очищать кэш.
+    // Если флаг --dist без --norev.
+    .pipe(gulpif(dist,
+      gulpif(!norev,
+        rev()
       )
     ))
 
-    // Выгрузка
-    .pipe(gulpif(dist, gulp.dest(distCss), gulp.dest(buildCss)))
+    // Выгрузка.
+    .pipe(gulp.dest(buildCss))
 
-    .pipe(gulpif(dist, // Если есть флаг --dist.
-      combine(
-        // Создаёт манифест с новым названием.
-        rev.manifest("manifest/manifest.json", { //
-          base: "manifest", /* Базовый каталог для manifest.json. Можно было бы и обойтись без этой опции, но без неё
-          не работает merge. */
-          merge: true // Чтобы манифесты не перезаписывались, а соединялись в один.
-        }),
-        // Выгружает файл манифеста в папку manifest.
-        gulp.dest("manifest")
+    // Если флаг --dist без --norev.
+    .pipe(gulpif(dist,
+      gulpif(!norev,
+        combine(
+          // Создаёт манифест с новым названием.
+          rev.manifest("manifest/manifest.json", {
+            base: "manifest", // Базовый каталог для manifest.json. Можно было бы и обойтись без этой опции, но без неё не работает merge. 
+            merge: true // Чтобы манифесты не перезаписывались, а соединялись в один.
+          }),
+          // Выгружает файл манифеста в папку manifest.
+          gulp.dest("manifest")
+        )
       )
     ))
 
-    // Browsersync
-    .pipe(gulpif(!dist, browserSync.stream())); // Если нет флага --dist или --github.
+    // Browsersync.
+    .pipe(gulpif(!dist, browserSync.stream())); // Если нет флага --dist.
 });
 
-gulp.task("jsCustom", function() {
-  return gulp.src("src/blocks/**/*.js")
+gulp.task("js", function() {
+  return gulp.src("src/blocks/scripts.js")
+
+    // Собираем всё в один файл.
+    .pipe(include())
+      .on('error', console.log)
+
     // Приписывает хэш в конце файла(styles-004da46867.css). Чтобы при обновлении сайта не приходилось очищать кэш.
-    .pipe(gulpif(dist, // Если есть флаг --dist.
-      rev()
+    // Если флаг --dist без --norev.
+    .pipe(gulpif(dist,
+      gulpif(!norev,
+        rev()
+      )
     ))
 
-    // Если флаг --dist, то выгружает по пути distJs, иначе по пути buildJs.
-    .pipe(gulpif(dist, gulp.dest(distJs), gulp.dest(buildJs)))
-
-    // Создаёт манифест с новым названием.
-    .pipe(gulpif(dist, // Если есть флаг --dist.
-      rev.manifest("manifest/manifest.json", {
-        base: "manifest", /* Базовый каталог для manifest.json. Можно было бы и обойтись без этой опции, но без неё
-          не работает merge. */
-        merge: true // Чтобы манифесты не перезаписывались, а соединялись в один.
-      })
+    .pipe(gulpif(min,
+      uglify()
     ))
 
-    // Выгружает файл манифеста в папку manifest.
-    .pipe(gulpif(dist, // Если есть флаг --dist.
-      gulp.dest("manifest")
+    // Выгрузка.
+    .pipe(gulp.dest(buildJs))
+
+    // Если флаг --dist без --norev.
+    .pipe(gulpif(dist,
+      gulpif(!norev,
+        combine(
+          // Создаёт манифест с новым названием.
+          rev.manifest("manifest/manifest.json", {
+            base: "manifest", // Базовый каталог для manifest.json. Можно было бы и обойтись без этой опции, но без неё не работает merge. 
+            merge: true // Чтобы манифесты не перезаписывались, а соединялись в один.
+          }),
+          // Выгружает файл манифеста в папку manifest.
+          gulp.dest("manifest")
+        )
+      )
     ))
 
-    // Browsersync
-    .pipe(gulpif(!dist, browserSync.stream())); // Если нет флага --dist или --github.
+    // Browsersync.
+    .pipe(gulpif(!dist, browserSync.stream())); // Если нет флага --dist.
 });
 
 gulp.task("imgs", function() {
@@ -180,71 +210,55 @@ gulp.task("imgs", function() {
 
     .pipe(gulpif(dist, // Если есть флаг --dist.
       smushit({
-        verbose: true // Подробный режим
+        verbose: true // Подробный режим.
       })
     ))
 
-    // Если флаг --dist, то выгружает по пути distImgs, иначе по пути buildImgs.
-    .pipe(gulpif(dist, gulp.dest(distImgs), gulp.dest(buildImgs)))
+    // Выгрузка.
+    .pipe(gulp.dest(buildImgs))
 
-    // Browsersync
-    .pipe(gulpif(!dist, browserSync.stream())); // Если нет флага --dist или --github.
+    // Browsersync.
+    .pipe(gulpif(!dist, browserSync.stream())); // Если нет флага --dist.
 });
 
 gulp.task("imgsWebp", function() {
   return gulp.src("src/blocks/**/*.{jpg,jpeg,png,gif,ico}")
 
-    // Конвертирует изображение в webp и сжимает его
+    // Конвертирует изображение в webp и сжимает его.
     .pipe(webp({
       quality: 75
     }))
 
-    // Если флаг --dist, то выгружает по пути distImgs, иначе по пути buildImgs.
-    .pipe(gulpif(dist, gulp.dest(distImgs), gulp.dest(buildImgs)))
+    // Выгрузка.
+    .pipe(gulp.dest(buildImgs))
 
-    // Browsersync
-    .pipe(gulpif(!dist, browserSync.stream())); // Если нет флага --dist или --github.
+    // Browsersync.
+    .pipe(gulpif(!dist, browserSync.stream())); // Если нет флага --dist.
 });
 
 // Из-за того, что smushit не умеет обрабатывать svg пришлось сделать для них отдельный таск.
 gulp.task("imgsSvg", function() {
   return gulp.src(["src/blocks/**/*.svg", "!src/blocks/svg-sprite/*.svg", "!src/blocks/fonts/**/*.svg"])
 
-    // Если флаг --dist, то выгружает по пути distImgs, иначе по пути buildImgs.
-    .pipe(gulpif(dist, gulp.dest(distImgs), gulp.dest(buildImgs)))
+    // Выгрузка.
+    .pipe(gulp.dest(buildImgs))
 
-    // Browsersync
-    .pipe(gulpif(!dist, browserSync.stream())); // Если нет флага --dist или --github.
+    // Browsersync.
+    .pipe(gulpif(!dist, browserSync.stream())); // Если нет флага --dist.
 });
-
-gulp.task("libs", function() {
-  return gulp.src("src/libs/**/*.*")
-
-    // Выгрузка
-    .pipe(gulpif(dist, gulp.dest("dist/libs"), gulp.dest("src/build/libs")))
-
-    // Browsersync
-    .pipe(gulpif(!dist, browserSync.stream())); // Если нет флага --dist или --github.
-});
-
 
 gulp.task("fonts", function() {
-  return gulp.src("src/blocks/fonts/**/*.{woff,woff2,ttf,eot,svg}")
+  return gulp.src("src/fonts/**/*.{woff,woff2,ttf,eot,svg}")
 
-    // Если флаг --dist, то выгружает по пути distFonts, иначе по пути buildFonts.
-    .pipe(gulpif(dist, gulp.dest(distFonts), gulp.dest(buildFonts)))
+    // Выгрузка.
+    .pipe(gulp.dest(buildFonts))
 
-    // browserSync
-    .pipe(gulpif(!dist, browserSync.stream())); // Если нет флага --dist или --github.
+    // browserSync.
+    .pipe(gulpif(!dist, browserSync.stream())); // Если нет флага --dist.
 });
 
-
 gulp.task("clean", function() {
-  if (dist) { // Если флаг --dist.
-    return del(["dist", "src/build"]);
-  } else { // Если нет флага --dist.
-    return del("src/build");
-  }
+  return del("build");
 });
 
 gulp.task("cleanManifest", function(c) {
@@ -255,12 +269,11 @@ gulp.task("cleanManifest", function(c) {
   }
 });
 
-
 /* Собирает все svg файлы и сохраняет их в файл sprite.svg.
 <svg class="inline-svg-icon browser"><use xlink:href="imgs/sprite.svg#baseball"></use></svg>
 https://www.youtube.com/watch?v=ihAHwkl0KAI и https://habrahabr.ru/post/272505/ */
 gulp.task("svg", function() {
-  return gulp.src("src/blocks/svg-sprite/*.svg")
+  return gulp.src("src/svg-sprite/*.svg")
 
     // Оптимизируем.
     .pipe(svgo({
@@ -294,8 +307,8 @@ gulp.task("svg", function() {
       }
     }))
 
-    // Выгрузка
-    .pipe(gulpif(dist, gulp.dest(distSvg), gulp.dest(buildSvg)));
+    // Выгрузка.
+    .pipe(gulp.dest(buildSvg));
 });
 
 gulp.task("deploy", function() {
@@ -307,7 +320,7 @@ gulp.task("deploy", function() {
     log: gutil.log
   });
 
-  var globs = ["dist/**"];
+  var globs = ["build/**"];
   return gulp.src(globs, {buffer: false})
   .pipe(conn.dest(ftpDest));
 });
@@ -316,12 +329,11 @@ gulp.task("watch", function(c) {
   if (!dist) { // Проверяет на наличие флага.
     gulp.watch(["src/*.html", "src/blocks/**/*.html"], gulp.series("html"));
     gulp.watch("src/blocks/**/*.scss", gulp.series("css"));
-    gulp.watch("src/blocks/**/*.js", gulp.series("jsCustom"));
-    gulp.watch("src/blocks/svg-sprite/*.svg", gulp.series("svg"));
-    gulp.watch("src/libs/**/*.*", gulp.series("libs"));
+    gulp.watch(["src/blocks/**/*.js", "src/blocks/scripts.js"], gulp.series("js"));
+    gulp.watch("src/svg-sprite/*.svg", gulp.series("svg"));
+    gulp.watch("src/custom-libs/**/*.*", gulp.series("css", "js"));
 
-    // Наблюдает за изображениями. При добавлении - переносит в src/build/imgs, при удалении - удаляет из src/build/imgs.
-    // https://github.com/gulpjs/gulp/blob/4.0/docs/recipes/handling-the-delete-event-on-watch.md
+    // Наблюдает за изображениями. При добавлении - переносит в src/build/imgs, при удалении - удаляет из src/build/imgs. https://github.com/gulpjs/gulp/blob/4.0/docs/recipes/handling-the-delete-event-on-watch.md
     gulp.watch(["src/blocks/**/*.{jpg,jpeg,png,gif,svg}", "!src/blocks/svg-sprite/*.svg", "!src/blocks/fonts/**/*.svg"], gulp.series("imgs", "imgsSvg")).on("unlink", function(filepath) {
       var filePathFromSrc = path.relative(path.resolve("src/blocks/"), filepath);
       var destFilePath = path.resolve(buildImgs, filePathFromSrc);
@@ -341,7 +353,7 @@ gulp.task("watch", function(c) {
 
 gulp.task("build",
   gulp.series(
-    "clean", "css", "libs", "jsCustom", "html", "imgs", "imgsSvg", "fonts", "svg", "cleanManifest"
+    "clean", "css", "js", "html", "imgs", "imgsSvg", "fonts", "svg", "cleanManifest"
   )
 );
 
