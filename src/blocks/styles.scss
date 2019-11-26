@@ -4,8 +4,8 @@
 @import "../mixins/mixins.scss";
 
 // Библиотеки
+@import "../../node_modules/normalize.css/normalize";
 @import "../custom-libs/reset/reset";
-@import "../../node_modules/normalize.css/normalize.css";
 
 // Общие блоки(их можно миксовать)
 

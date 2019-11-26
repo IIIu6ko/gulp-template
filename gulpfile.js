@@ -7,10 +7,11 @@ const gulpif       = require("gulp-if"); // Условия.
 const combine      = require("stream-combiner2").obj; // Комбинирует пайпы. Для gulp-if.
 const revReplace   = require("gulp-rev-replace");
 const rev          = require("gulp-rev");
-const include      = require("gulp-include");
+const fileinclude  = require("gulp-file-include");
 
 // html.
 const htmlhint     = require("gulp-htmlhint");
+const w3cValidator = require('gulp-w3c-html-validator');
 
 // css.
 const sass         = require("gulp-sass");
@@ -78,10 +79,14 @@ gulp.task("html", function() {
     // HTML-валидатор.
     .pipe(htmlhint(".htmlhintrc"))
     .pipe(htmlhint.reporter())
+    .pipe(w3cValidator())
+    .pipe(w3cValidator.reporter())
 
-    // //=require "../blocks/page/page.js".
-    .pipe(include())
-      .on('error', console.log)
+    // @@include("blocks/header/header.html").
+    .pipe(fileinclude({
+      prefix: '@@',
+      basepath: '@file'
+    })).on('error', console.log)
 
     // Манифест.
     // Если флаг --dist без --norev.
@@ -168,8 +173,11 @@ gulp.task("js", function() {
   return gulp.src("src/blocks/scripts.js")
 
     // Собираем всё в один файл.
-    .pipe(include())
-      .on('error', console.log)
+    // // include("../../node_modules/jquery/dist/jquery.min.js").
+    .pipe(fileinclude({
+      prefix: '//',
+      basepath: '@file'
+    })).on('error', console.log)
 
     // Приписывает хэш в конце файла(styles-004da46867.css). Чтобы при обновлении сайта не приходилось очищать кэш.
     // Если флаг --dist без --norev.
@@ -333,11 +341,14 @@ gulp.task("watch", function(c) {
     gulp.watch("src/svg-sprite/*.svg", gulp.series("svg"));
     gulp.watch("src/custom-libs/**/*.*", gulp.series("css", "js"));
 
-    // Наблюдает за изображениями. При добавлении - переносит в src/build/imgs, при удалении - удаляет из src/build/imgs. https://github.com/gulpjs/gulp/blob/4.0/docs/recipes/handling-the-delete-event-on-watch.md
-    gulp.watch(["src/blocks/**/*.{jpg,jpeg,png,gif,svg}", "!src/blocks/svg-sprite/*.svg", "!src/blocks/fonts/**/*.svg"], gulp.series("imgs", "imgsSvg")).on("unlink", function(filepath) {
+    // Наблюдает за изображениями. При добавлении - переносит в build/imgs, при удалении - удаляет из build/imgs. https://github.com/gulpjs/gulp/blob/4.0/docs/recipes/handling-the-delete-event-on-watch.md
+    gulp.watch("src/blocks/**/*.{jpg,jpeg,png,gif,svg}", gulp.series("imgs", "imgsSvg", "imgsWebp")).on("unlink", function(filepath) {
       var filePathFromSrc = path.relative(path.resolve("src/blocks/"), filepath);
       var destFilePath = path.resolve(buildImgs, filePathFromSrc);
+      var destFilePathWebp = path.parse(destFilePath);
+      var destFilePathWebp = destFilePathWebp.dir + "\\" + destFilePathWebp.name + ".webp";
       del.sync(destFilePath);
+      del.sync(destFilePathWebp);
     });
 
     // Тоже самое, только со шрифтами.
@@ -353,7 +364,7 @@ gulp.task("watch", function(c) {
 
 gulp.task("build",
   gulp.series(
-    "clean", "css", "js", "html", "imgs", "imgsSvg", "fonts", "svg", "cleanManifest"
+    "clean", "css", "js", "html", "imgs", "imgsSvg", "imgsWebp", "fonts", "svg", "cleanManifest"
   )
 );
 
