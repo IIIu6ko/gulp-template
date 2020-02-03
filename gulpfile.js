@@ -282,11 +282,7 @@ gulp.task("clean", function() {
 });
 
 gulp.task("cleanManifest", function(c) {
-  if (dist) { // Если флаг --dist.
-    return del("manifest");
-  } else { // Если нет флага --dist.
-    return c();
-  }
+  return del("manifest");
 });
 
 /* Собирает все svg файлы и сохраняет их в файл sprite.svg.
