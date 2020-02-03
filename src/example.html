@@ -8,6 +8,18 @@
     <meta name="keywords" content="keywords">
     <meta name="format-detection" content="telephone=no">
 
+    <!-- fonts preload -->
+    <link rel="preload" href="fonts/roboto/roboto-v20-latin_cyrillic-regular.woff2" as="font" type="font/woff2" crossorigin>
+
+    <!-- favicon -->
+    <link rel="apple-touch-icon" sizes="180x180" href="favicon/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon/favicon-16x16.png">
+    <link rel="manifest" href="favicon/site.webmanifest">
+    <link rel="mask-icon" href="favicon/safari-pinned-tab.svg" color="#000000">
+    <meta name="msapplication-TileColor" content="#da532c">
+    <meta name="theme-color" content="#ff0000">
+
     <title>example</title>
 
     <!-- styles -->
@@ -28,12 +40,11 @@
         margin-top: 100px;
       }
     </style>
-
   </head>
   <body class="page">
     <h1>Примеры блоков</h1>
 
-    <!-- tabs -->
+    <!-- begin tabs -->
     <h2>Табы</h2>
     <div class="tabs">
       <nav class="tabs__nav">
@@ -56,12 +67,14 @@
         <p>Tokyo is the capital of Japan.</p>
       </div>
     </div>
+    <!-- end tabs -->
 
-    <!-- svg -->
+    <!-- begin svg -->
     <h2>SVG</h2>
     <svg class="svg"><use xlink:href="imgs/sprite.svg#bedrooms"></use></svg>
+    <!-- end svg -->
 
-    <!-- rating -->
+    <!-- begin rating -->
     <h2>Рейтинг</h2>
     <div class="rating">
       <label class="rating__item">
@@ -85,5 +98,6 @@
         <svg class="rating__icon"><use xlink:href="imgs/sprite.svg#balloon"></use></svg>
       </label>
     </div>
+    <!-- end rating -->
   </body>
 </html>

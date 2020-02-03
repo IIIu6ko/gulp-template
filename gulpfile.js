@@ -11,7 +11,6 @@ const fileinclude  = require("gulp-file-include");
 
 // html.
 const htmlhint     = require("gulp-htmlhint");
-const w3cValidator = require('gulp-w3c-html-validator');
 
 // css.
 const sass         = require("gulp-sass");
@@ -29,6 +28,7 @@ const uglify       = require("gulp-uglify");
 // Работа с изображениями.
 const webp         = require("gulp-webp"); // Конвертирует изображение в webp.
 const smushit      = require("gulp-smushit"); // Сжатие изображений.
+const filter       = require("gulp-filter"); // Проверка на формат изображений.
 
 // Работа с SVG-спрайтами.
 const svgSprite    = require("gulp-svg-sprite"); // Спрайты из SVG.
@@ -51,12 +51,13 @@ const min          = argv.min;
 const norev        = argv.norev;
 
 // Пути.
-const buildHtml     = "build";
-const buildCss      = "build/css";
-const buildJs       = "build/js";
-const buildImgs     = "build/imgs";
-const buildFonts    = "build/fonts";
-const buildSvg      = "build/imgs";
+const buildHtml    = "build";
+const buildCss     = "build/css";
+const buildJs      = "build/js";
+const buildImgs    = "build/imgs";
+const buildFonts   = "build/fonts";
+const buildSvg     = "build/imgs";
+const buildFavicon = "build/favicon";
 
 gulp.task("browser-sync", function(c) {
   if (!dist) {
@@ -74,13 +75,11 @@ gulp.task("browser-sync", function(c) {
 });
 
 gulp.task("html", function() {
-  return gulp.src("src/*.html", {base: "src"})
+  return gulp.src("src/*.html", {base: "src", since: gulp.lastRun("html")})
 
     // HTML-валидатор.
     .pipe(htmlhint(".htmlhintrc"))
     .pipe(htmlhint.reporter())
-    .pipe(w3cValidator())
-    .pipe(w3cValidator.reporter())
 
     // @@include("blocks/header/header.html").
     .pipe(fileinclude({
@@ -214,16 +213,29 @@ gulp.task("js", function() {
 });
 
 gulp.task("imgs", function() {
+  var smushitFilter = filter("**/*.{jpg,jpeg,png}", {restore: true})
   return gulp.src("src/blocks/**/*.{jpg,jpeg,png,gif,ico}")
 
+    .pipe(smushitFilter) // Фильтруем поток.
     .pipe(gulpif(dist, // Если есть флаг --dist.
       smushit({
         verbose: true // Подробный режим.
       })
     ))
+    .pipe(smushitFilter.restore) // Восстанавливаем поток.
 
     // Выгрузка.
     .pipe(gulp.dest(buildImgs))
+
+    // Browsersync.
+    .pipe(gulpif(!dist, browserSync.stream())); // Если нет флага --dist.
+});
+
+gulp.task("favicon", function() {
+  return gulp.src("src/favicon/*.*")
+
+    // Выгрузка.
+    .pipe(gulp.dest(buildFavicon))
 
     // Browsersync.
     .pipe(gulpif(!dist, browserSync.stream())); // Если нет флага --dist.
@@ -340,6 +352,7 @@ gulp.task("watch", function(c) {
     gulp.watch(["src/blocks/**/*.js", "src/blocks/scripts.js"], gulp.series("js"));
     gulp.watch("src/svg-sprite/*.svg", gulp.series("svg"));
     gulp.watch("src/custom-libs/**/*.*", gulp.series("css", "js"));
+    gulp.watch("src/favicon/*.*", gulp.series("favicon"));
 
     // Наблюдает за изображениями. При добавлении - переносит в build/imgs, при удалении - удаляет из build/imgs. https://github.com/gulpjs/gulp/blob/4.0/docs/recipes/handling-the-delete-event-on-watch.md
     gulp.watch("src/blocks/**/*.{jpg,jpeg,png,gif,svg}", gulp.series("imgs", "imgsSvg", "imgsWebp")).on("unlink", function(filepath) {
@@ -352,7 +365,7 @@ gulp.task("watch", function(c) {
     });
 
     // Тоже самое, только со шрифтами.
-    gulp.watch("src/blocks/fonts/**/*.{woff,woff2,ttf,eot}", gulp.series("fonts")).on("unlink", function(filepath) {
+    gulp.watch("src/fonts/**/*.{woff,woff2,ttf,eot}", gulp.series("fonts")).on("unlink", function(filepath) {
       var filePathFromSrc = path.relative(path.resolve("src/blocks/fonts"), filepath);
       var destFilePath = path.resolve(buildFonts, filePathFromSrc);
       del.sync(destFilePath);
@@ -364,7 +377,7 @@ gulp.task("watch", function(c) {
 
 gulp.task("build",
   gulp.series(
-    "clean", "css", "js", "html", "imgs", "imgsSvg", "imgsWebp", "fonts", "svg", "cleanManifest"
+    "clean", "css", "js", "html", "imgs", "imgsSvg", "imgsWebp", "fonts", "svg", "favicon", "cleanManifest"
   )
 );
 

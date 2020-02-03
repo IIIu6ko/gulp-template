@@ -3,12 +3,10 @@
 
 /* fonts */
 @font-face {
-  font-family: "gothamPro";
+  font-family: "roboto";
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url("../fonts/gothamPro/GothamPro.eot"); /* IE9 Compat Modes */
-  src: url("../fonts/gothamPro/GothamPro.eot?#iefix") format("embedded-opentype"), /* IE6-IE8 */
-       url("../fonts/gothamPro/GothamPro.woff") format("woff"), /* Modern Browsers */
-       url("../fonts/gothamPro/GothamPro.ttf") format("truetype"); /* Safari, Android, iOS */
+  src: url("../fonts/roboto/roboto-v20-latin_cyrillic-regular.woff2") format("woff2"),
+       url("../fonts/roboto/roboto-v20-latin_cyrillic-regular.woff") format("woff");
 }

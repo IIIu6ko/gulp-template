@@ -1,29 +1,8 @@
 /* page */
 body,
 .page {
-  font-family: "gothamPro", sans-serif;
+  font-family: "roboto", sans-serif;
   font-size: 16px;
   color: #000000;
   font-weight: 400;
-
-  &__container {
-    position: relative;
-  }
-
-  &__object {
-    position: absolute;
-    bottom: 0;
-    right: 0;
-  }
-}
-
-body,
-.page,
-html {
-  &.fixed {
-    position: relative;
-    overflow: hidden;
-    height: 100%;
-    touch-action: none;
-  }
 }
