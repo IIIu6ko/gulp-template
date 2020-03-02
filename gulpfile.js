@@ -11,6 +11,7 @@ const fileinclude  = require("gulp-file-include");
 
 // html.
 const htmlhint     = require("gulp-htmlhint");
+const prettyHtml   = require("gulp-pretty-html"); // Добавляет индентацию.
 
 // css.
 const sass         = require("gulp-sass");
@@ -93,6 +94,13 @@ gulp.task("html", function() {
       gulpif(!norev,
         revReplace({manifest: gulp.src("manifest/manifest.json", {allowEmpty: true})})
       )
+    ))
+
+    // Добавляет индентацию для заинклюженных блоков.
+    .pipe(gulpif(dist,
+      prettyHtml({
+        indent_size: 2
+      })
     ))
 
     // Выгрузка.
@@ -344,7 +352,7 @@ gulp.task("deploy", function() {
 gulp.task("watch", function(c) {
   if (!dist) { // Проверяет на наличие флага.
     gulp.watch(["src/*.html", "src/blocks/**/*.html"], gulp.series("html"));
-    gulp.watch("src/blocks/**/*.scss", gulp.series("css"));
+    gulp.watch(["src/blocks/**/*.scss", "src/consts/*.scss", "src/fonts/fonts.scss", "src/mixins/*.scss", "src/custom-libs/*.{scss, css}"], gulp.series("css"));
     gulp.watch(["src/blocks/**/*.js", "src/blocks/scripts.js"], gulp.series("js"));
     gulp.watch("src/svg-sprite/*.svg", gulp.series("svg"));
     gulp.watch("src/custom-libs/**/*.*", gulp.series("css", "js"));
