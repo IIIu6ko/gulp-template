@@ -1,3 +1,5 @@
+/* begin tabs */
+
 function openTab(evt, tabName, speed) {
   var container = ".tabs";
   var buttonsContainer = ".tabs__nav";
@@ -38,3 +40,6 @@ function openTab(evt, tabName, speed) {
 $(".tabs").each(function() {
   $(this).find(".tabs__button:first").trigger("click");
 });
+
+/* end tabs */
+

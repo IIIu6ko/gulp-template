@@ -1,3 +1,5 @@
+/* begin rating */
+
 // Добавляем активный класс инпуту, который checked изначально.
 $(".rating__input").each(function() {
   if ($(this).prop("checked")) {
@@ -39,3 +41,6 @@ function addActivePrevAllChecked() {
     }
   });
 }
+
+/* end rating */
+

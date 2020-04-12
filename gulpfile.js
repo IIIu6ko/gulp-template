@@ -32,10 +32,8 @@ const smushit      = require("gulp-smushit"); // Сжатие изображен
 const filter       = require("gulp-filter"); // Проверка на формат изображений.
 
 // Работа с SVG-спрайтами.
-const svgSprite    = require("gulp-svg-sprite"); // Спрайты из SVG.
-const svgo         = require("gulp-svgo");
+const svgstore     = require('gulp-svgstore'); // Спрайты из SVG.
 const cheerio      = require("gulp-cheerio");
-const cleanSvg     = require("gulp-cheerio-clean-svg");
 const replace      = require("gulp-replace"); // Заменяет одно на другое.
 
 // deploy.
@@ -117,7 +115,7 @@ gulp.task("css", function() {
     .pipe(gulpif(!dist, sourcemaps.init())) // Если нет флага --dist.
 
     // Компилируем SASS.
-    .pipe(sass({outputStyle: 'expanded'}).on('error', sass.logError))
+    .pipe(sass({outputStyle: "expanded"}).on("error", sass.logError))
 
     // Переименовываем в styles.css.
     .pipe(rename("styles.css"))
@@ -176,6 +174,29 @@ gulp.task("css", function() {
     .pipe(gulpif(!dist, browserSync.stream())); // Если нет флага --dist.
 });
 
+gulp.task("cssLibs", function() {
+  return gulp.src("src/blocks/libs.scss")
+
+    // Компилируем SASS.
+    .pipe(sass({outputStyle: "expanded"}).on("error", sass.logError))
+
+    // Переименовываем в libs.css.
+    .pipe(rename("libs.css"))
+
+    // Минифицируем.
+    .pipe(postcss([
+      cssnano({
+        preset: "default"
+      })
+    ]))
+
+    // Выгрузка.
+    .pipe(gulp.dest(buildCss))
+
+    // Browsersync.
+    .pipe(gulpif(!dist, browserSync.stream())); // Если нет флага --dist.
+});
+
 gulp.task("js", function() {
   return gulp.src("src/blocks/scripts.js")
 
@@ -215,6 +236,26 @@ gulp.task("js", function() {
         )
       )
     ))
+
+    // Browsersync.
+    .pipe(gulpif(!dist, browserSync.stream())); // Если нет флага --dist.
+});
+
+gulp.task("jsLibs", function() {
+  return gulp.src("src/blocks/libs.js")
+
+    // Собираем всё в один файл.
+    // // include("../../node_modules/jquery/dist/jquery.min.js").
+    .pipe(fileinclude({
+      prefix: '//',
+      basepath: '@file'
+    })).on('error', console.log)
+
+    // Минифицируем.
+    .pipe(uglify())
+
+    // Выгрузка.
+    .pipe(gulp.dest(buildJs))
 
     // Browsersync.
     .pipe(gulpif(!dist, browserSync.stream())); // Если нет флага --dist.
@@ -293,43 +334,44 @@ gulp.task("cleanManifest", function(c) {
   return del("manifest");
 });
 
-/* Собирает все svg файлы и сохраняет их в файл sprite.svg.
-<svg class="inline-svg-icon browser"><use xlink:href="imgs/sprite.svg#baseball"></use></svg>
+/* Собирает все svg файлы и сохраняет их в файл svg-sprite.svg.
+<svg class="inline-svg-icon browser"><use xlink:href="imgs/svg-sprite.svg#baseball"></use></svg>
 https://www.youtube.com/watch?v=ihAHwkl0KAI и https://habrahabr.ru/post/272505/ */
 gulp.task("svg", function() {
   return gulp.src("src/svg-sprite/*.svg")
 
-    // Оптимизируем.
-    .pipe(svgo({
-      plugins: [{
-        convertStyleToAttrs: false
-      }]
-    }))
-
     // Удаляет атрибуты из svg файлов, чтобы можно было их менять с помощью css.
-    .pipe(cheerio(cleanSvg({
-      attributes: ["style", "fill-rule", "clip-rule", "fill"]
-    })))
+    .pipe(cheerio({
+      run: function ($) {
+        $("[fill]").removeAttr("fill");
+        $("[fill-rule]").removeAttr("fill-rule");
+        $("[clip-rule]").removeAttr("clip-rule");
+        $("[transform]").removeAttr("transform");
+        $("[fill-opacity]").removeAttr("fill-opacity");
+        $("[stroke]").removeAttr("stroke");
+        $("[stroke-dasharray]").removeAttr("stroke-dasharray");
+        $("[stroke-dashoffset]").removeAttr("stroke-dashoffset");
+        $("[stroke-linecap]").removeAttr("stroke-linecap");
+        $("[stroke-linejoin]").removeAttr("stroke-linejoin");
+        $("[stroke-miterlimit]").removeAttr("stroke-miterlimit");
+        $("[stroke-opacity]").removeAttr("stroke-opacity");
+        $("[stroke-width]").removeAttr("stroke-width");
+        $("[font-family]").removeAttr("font-family");
+        $("[font-size]").removeAttr("font-size");
+        $("[font-size-adjust]").removeAttr("font-size-adjust");
+        $("[font-stretch]").removeAttr("font-stretch");
+        $("[font-style]").removeAttr("font-style");
+        $("[font-variant]").removeAttr("font-variant");
+        $("[font-weight]").removeAttr("font-weight");
+        $("[style]").removeAttr("style");
+      }
+    }))
 
     // У cheerio есть один баг — иногда он преобразовывает символ '>' в кодировку '&gt;'.
     .pipe(replace("&gt;", ">"))
 
     // Делаем спрайт.
-    .pipe(svgSprite({
-      mode: {
-        symbol: {
-          sprite: "sprite.svg",
-          dest: "./" // Убираем папку с названием мода.
-        }
-      },
-      shape: { // Убирает префикс с путями.
-        id: {
-          generator: function(name) {
-            return path.basename(name, ".svg");
-          }
-        }
-      }
-    }))
+    .pipe(svgstore())
 
     // Выгрузка.
     .pipe(gulp.dest(buildSvg));
@@ -353,7 +395,9 @@ gulp.task("watch", function(c) {
   if (!dist) { // Проверяет на наличие флага.
     gulp.watch(["src/*.html", "src/blocks/**/*.html"], gulp.series("html"));
     gulp.watch(["src/blocks/**/*.scss", "src/consts/*.scss", "src/fonts/fonts.scss", "src/mixins/*.scss", "src/custom-libs/*.{scss, css}"], gulp.series("css"));
+    gulp.watch(["src/blocks/libs.scss", "src/custom-libs/**/*.{scss, css}"], gulp.series("cssLibs"));
     gulp.watch(["src/blocks/**/*.js", "src/blocks/scripts.js"], gulp.series("js"));
+    gulp.watch("src/blocks/libs.js", gulp.series("jsLibs"));
     gulp.watch("src/svg-sprite/*.svg", gulp.series("svg"));
     gulp.watch("src/custom-libs/**/*.*", gulp.series("css", "js"));
     gulp.watch("src/favicon/*.*", gulp.series("favicon"));
@@ -381,7 +425,7 @@ gulp.task("watch", function(c) {
 
 gulp.task("build",
   gulp.series(
-    "clean", "css", "js", "html", "imgs", "imgsSvg", "imgsWebp", "fonts", "svg", "favicon", "cleanManifest"
+    "clean", "cssLibs", "css", "jsLibs", "js", "html", "imgs", "imgsSvg", "imgsWebp", "fonts", "svg", "favicon", "cleanManifest"
   )
 );
 

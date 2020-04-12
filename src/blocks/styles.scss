@@ -3,15 +3,9 @@
 @import "../fonts/fonts.scss";
 @import "../mixins/mixins.scss";
 
-// Библиотеки
-@import "../../node_modules/normalize.css/normalize";
-@import "../custom-libs/reset/reset";
-
 // Общие блоки(их можно миксовать)
 
 // Блоки
 @import "page/page.scss";
 @import "rating/rating.scss";
 @import "tabs/tabs.scss";
-
-// Медиа-запросы
