@@ -1,3 +1,3 @@
-//include("page/page.js")
-//include("tabs/tabs.js")
-//include("rating/rating.js")
+/* begin scripts */
+/* import './page/page.js'; */
+/* end scripts */

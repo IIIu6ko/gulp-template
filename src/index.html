@@ -1,70 +1,122 @@
 <!DOCTYPE html>
 <html lang="ru">
   <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <meta name="description" content="Это описание вашей страницы">
-    <meta name="keywords" content="Ключевые слова страницы...">
-    <meta name="format-detection" content="telephone=no">
+    {% set pageTitle = "index" %}
+    {% include "blocks/head/head.html" %}
 
-    <!-- fonts preload -->
-    <link rel="preload" href="fonts/roboto/roboto-v20-latin_cyrillic-regular.woff2" as="font" type="font/woff2" crossorigin>
-
-    <!-- favicon -->
-    <link rel="apple-touch-icon" sizes="180x180" href="favicon/apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="favicon/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="favicon/favicon-16x16.png">
-    <link rel="manifest" href="favicon/site.webmanifest">
-    <link rel="mask-icon" href="favicon/safari-pinned-tab.svg" color="#000000">
-    <meta name="msapplication-TileColor" content="#da532c">
-    <meta name="theme-color" content="#ff0000">
-
-    <title>Список страниц</title>
-
-    <!-- styles -->
-    <link rel="stylesheet" href="css/styles.css">
-
-    <!--[if lte IE 10]><script src="http://phpbbex.com/oldies/oldies.js" charset="utf-8"></script><![endif]-->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600&display=swap" rel="stylesheet">
 
     <style>
       body {
         display: flex;
-        min-height: 100vh;
-        background-color: #343434;
+        flex-direction: column;
+        align-items: center;
+        min-height: calc(100vh - 60px - 180px);
+        margin: 0;
+        padding: 60px 145px 180px;
+        background-color: #1c1c1c;
+        font-family: "Montserrat", sans-serif;
+        font-weight: 600;
+        overflow-y: auto;
+      }
+
+      h1 {
+        text-align: center;
+        margin: 0 0 50px;
+        padding-bottom: 12px;
+        font-size: 36px;
+        line-height: 1.5;
+        color: rgba(255, 255, 255, 0.9);
+        text-decoration: none;
+        transition: 0.4s;
+      }
+
+      h2 {
+        position: relative;
+        display: inline-flex;
+        text-align: center;
+        margin: 0 0 20px;
+        padding-bottom: 12px;
+        font-size: 24px;
+        line-height: 1.5;
+        letter-spacing: 1.5px;
+        color: rgba(255, 255, 255, 0.9);
+        text-decoration: none;
+        transition: 0.4s;
+      }
+
+      h2:before {
+        content: "";
+        position: absolute;
+        left: 0;
+        bottom: 10px;
+        width: 100%;
+        height: 1px;
+        background-color: rgba(255, 255, 255, 0.2);
       }
 
       ul {
+        position: relative;
         width: 100%;
-        margin: 0;
-        padding: 40px 0;
-        text-align: center;
+        margin: 0 0 50px;
+        padding: 0;
         list-style: none;
       }
 
       li {
-        margin-bottom: 20px;
+        margin: 0;
+        text-align: center;
       }
 
       a {
-        font-size: 20px;
-        font-weight: 400;
-        color: #96c7db;
+        display: inline-block;
+        margin: 0;
+        padding-bottom: 24px;
+        font-size: 18px;
+        line-height: 1.5;
+        color: rgba(255, 255, 255, 0.9);
         text-decoration: none;
-        transition: 0.25s;
+        transition: 0.4s;
+      }
+
+      a.no-hover {
+        opacity: 0.4;
       }
 
       a:hover {
         color: #ffffff;
+        transform: scale(1.1);
       }
     </style>
-
   </head>
+
   <body>
+    <h1>Список страниц</h1>
+
+    <h2>Пример</h2>
     <ul>
       <li>
-        <a href="example.html" title="example" target="_blank">example</a>
+        <a class="link" href="example.html" target="_blank">Пример</a>
       </li>
     </ul>
+
+    <script type="text/javascript">
+      const allLink = document.querySelectorAll('.link');
+
+      allLink.forEach((link) => {
+        link.addEventListener('mouseenter', (e) => {
+          allLink.forEach((link2) => {
+            link2.classList.add('no-hover');
+          });
+          e.target.classList.remove('no-hover');
+        });
+
+        link.addEventListener('mouseleave', () => {
+          allLink.forEach((link2) => {
+            link2.classList.remove('no-hover');
+          });
+        });
+      });
+    </script>
   </body>
 </html>

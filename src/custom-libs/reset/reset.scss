@@ -1,4 +1,5 @@
 /*! reset by IIIu6ko */
+/* stylelint-disable selector-no-vendor-prefix */
 * {
   box-sizing: border-box;
 }
@@ -32,33 +33,39 @@ input,
 select,
 textarea,
 button {
-  border-radius: 0;
   background-clip: padding-box;
+  border-radius: 0;
 }
 
 /* placeholder */
-::-webkit-input-placeholder { /* Chrome/Opera/Safari */
+
+/* Chrome/Opera/Safari */
+::-webkit-input-placeholder {
   color: inherit;
   opacity: 1;
 }
 
-::-moz-placeholder { /* Firefox 19+ */
+/* Firefox 19+ */
+::-moz-placeholder {
   color: inherit;
   opacity: 1;
 }
 
-:-ms-input-placeholder { /* IE 10+ */
+/* IE 10+ */
+:-ms-input-placeholder {
   color: inherit;
   opacity: 1;
 }
 
-:-moz-placeholder { /* Firefox 18- */
+/* Firefox 18- */
+:-moz-placeholder {
   color: inherit;
   opacity: 1;
 }
 
 button {
   padding: 0;
+  border: 0;
   cursor: pointer;
 }
 
@@ -70,7 +77,8 @@ img {
   vertical-align: bottom;
 }
 
-a {
+a,
+a:hover {
   text-decoration: none;
 }
 

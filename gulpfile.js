@@ -1,432 +1,489 @@
-const gulp         = require("gulp"); // Подключает сам gulp.
-const browserSync  = require("browser-sync"); // Автоматическая перезагрузка страницы.
-const del          = require("del"); // Удаляет что либо.
-const path         = require("path"); // Манипуляции с путями.
-const argv         = require("yargs").argv; // Проверяет наличие флага -production в консоли.
-const gulpif       = require("gulp-if"); // Условия.
-const combine      = require("stream-combiner2").obj; // Комбинирует пайпы. Для gulp-if.
-const revReplace   = require("gulp-rev-replace");
-const rev          = require("gulp-rev");
-const fileinclude  = require("gulp-file-include");
+/* eslint-disable arrow-body-style */
+import gulp from 'gulp'; // Подключает сам gulp
+import browserSync from 'browser-sync'; // Автоматическая перезагрузка страницы
+import del from 'del'; // Удаляет что либо
+import path from 'path'; // Манипуляции с путями
+import Yargs from 'yargs'; // Проверяет наличие флага -production в консоли
+import gulpif from 'gulp-if'; // Условия
+import combine from 'stream-combiner2'; // Комбинирует пайпы. Для gulp-if
+import revReplace from 'gulp-rev-replace';
+import rev from 'gulp-rev';
+import notify from 'gulp-notify'; // Уведомления
 
-// html.
-const htmlhint     = require("gulp-htmlhint");
-const prettyHtml   = require("gulp-pretty-html"); // Добавляет индентацию.
+// html
+import htmlhint from 'gulp-htmlhint'; // HTML линтер
+import beautify from 'gulp-beautify'; // Форматирует HTML после сборки
+import nunjucks from 'gulp-nunjucks-render';
+import nunjucksInheritance from 'gulp-nunjucks-inheritance';
+import cached from 'gulp-cached';
 
-// css.
-const sass         = require("gulp-sass");
-const sortCSSmq    = require("sort-css-media-queries");
-const postcss      = require("gulp-postcss");
-const cssnano      = require("cssnano");
-const mqpacker     = require("css-mqpacker"); // Группирует медиазапросы.
-const autoprefixer = require("gulp-autoprefixer");
-const rename       = require("gulp-rename");
-const sourcemaps   = require("gulp-sourcemaps"); // Создаёт soursemaps.
+// css
+import dartSass from 'sass';
+import gulpSass from 'gulp-sass';
+import postcss from 'gulp-postcss';
+import cssnano from 'cssnano';
+import mqpacker from 'node-css-mqpacker'; // Группирует медиазапросы
+import sortCSSmq from 'sort-css-media-queries'; // Кастомный метод сортировки
+import autoprefixer from 'gulp-autoprefixer';
+import sourcemaps from 'gulp-sourcemaps'; // Создаёт soursemaps
+import sassInheritance from 'gulp-sass-inheritance';
+import gulpStylelint from '@ronilaukkarinen/gulp-stylelint'; // CSS линтер
 
-// js.
-const uglify       = require("gulp-uglify");
+// js
+import webpackStream from 'webpack-stream'; // Webpack
+import ESLintPlugin from 'eslint-webpack-plugin'; // Eslint для Webpack
+import plumber from 'gulp-plumber'; // Обработка ошибок
 
-// Работа с изображениями.
-const webp         = require("gulp-webp"); // Конвертирует изображение в webp.
-const smushit      = require("gulp-smushit"); // Сжатие изображений.
-const filter       = require("gulp-filter"); // Проверка на формат изображений.
+// Работа с изображениями
+import webp from 'gulp-webp'; // Конвертирует изображение в webp
+import imagemin, { mozjpeg, optipng } from 'gulp-imagemin'; // Сжатие изображений
+import filter from 'gulp-filter'; // Проверка на формат изображений
 
-// Работа с SVG-спрайтами.
-const svgstore     = require('gulp-svgstore'); // Спрайты из SVG.
-const cheerio      = require("gulp-cheerio");
-const replace      = require("gulp-replace"); // Заменяет одно на другое.
+// Работа с SVG-спрайтами
+import svgSprite from 'gulp-svg-sprite'; // Спрайты из SVG
+import cheerio from 'gulp-cheerio'; // Удаляет из SVG атрибуты
+import replace from 'gulp-replace'; // Заменяет одно на другое
 
-// deploy.
-const gutil        = require("gulp-util"); // будет выводить уведомления.
-const ftp          = require("vinyl-ftp");
-const ftpHost      = ""; // Хост для ftp-подключения.
-const ftpUser      = ""; // Пользователь для ftp-подключения.
-const ftpPass      = ""; // Пароль для ftp-подключения.
-const ftpDest      = "/httpdocs/" + path.basename(__dirname); // Путь куда на хостинге будет выгружаться сайт. (вторая часть - это название папки проекта)
+// Переменные
+const args = Yargs(process.argv.slice(2)).argv;
+const sass = gulpSass(dartSass);
+const combiner = combine.obj;
 
-// Флаги.cache
-const dist         = argv.dist;
-const min          = argv.min;
-const norev        = argv.norev;
+// Флаги
+const { dist } = args; // gulp --dist
 
-// Пути.
-const buildHtml    = "build";
-const buildCss     = "build/css";
-const buildJs      = "build/js";
-const buildImgs    = "build/imgs";
-const buildFonts   = "build/fonts";
-const buildSvg     = "build/imgs";
-const buildFavicon = "build/favicon";
+// Пути
+const buildHtml = 'build';
+const buildCss = 'build/css';
+const buildJs = 'build/js';
+const buildImgs = 'build/images';
+const buildFonts = 'build/fonts';
+const buildSvg = 'build/images';
+const buildResources = 'build/resources';
 
-gulp.task("browser-sync", function(c) {
+// Настройки
+const distMin = true;
+const distRev = true;
+const distImgMin = true;
+const webpImg = true;
+const webpack = true;
+
+export const browserSyncTask = (cb) => {
   if (!dist) {
     browserSync.init({
       server: {
-        baseDir: "build"
+        baseDir: 'build',
       },
       directory: false,
       notify: false,
-      ghostMode: false
+      ghostMode: false,
     });
   } else {
-    c(); // Вызывает callback, чтобы gulp не ругался.
+    cb(); // Вызывает callback, чтобы gulp не ругался
   }
-});
+};
 
-gulp.task("html", function() {
-  return gulp.src("src/*.html", {base: "src", since: gulp.lastRun("html")})
+export const html = () => {
+  return gulp.src('src/**/*.html', { base: 'src' })
 
-    // HTML-валидатор.
-    .pipe(htmlhint(".htmlhintrc"))
+    // Обработчик ошибок и вывод уведомления
+    .pipe(plumber({
+      errorHandler: notify.onError({
+        title: 'HTML',
+        message: 'Check your terminal',
+      }),
+    }))
+
+    // Nunjucks
+    .pipe(nunjucksInheritance({ base: 'src' })) // Ищем изменения в зависимостях
+    .pipe(nunjucks({ path: 'src' })) // Компилируем в HTML
+    .pipe(cached('njk'))
+
+    // Убираем из потока файлы из папки blocks
+    .pipe(filter(['**', '!src/blocks/**/*.*']))
+
+    // Форматируем HTML после компиляции Nunjucks
+    .pipe(beautify.html({
+      indent_size: 2,
+      indent_char: ' ',
+      max_preserve_newlines: -1,
+      preserve_newlines: false,
+      keep_array_indentation: false,
+      break_chained_methods: false,
+      indent_scripts: 'normal',
+      brace_style: 'collapse',
+      space_before_conditional: true,
+      unescape_strings: false,
+      jslint_happy: false,
+      end_with_newline: false,
+      wrap_line_length: 0,
+      indent_inner_html: true,
+      comma_first: false,
+      e4x: false,
+      indent_empty_lines: false,
+    }))
+
+    // HTML линтер
+    .pipe(htmlhint({ htmlhintrc: '.htmlhintrc' }))
     .pipe(htmlhint.reporter())
+    .pipe(htmlhint.failReporter({ suppress: true }))
 
-    // @@include("blocks/header/header.html").
-    .pipe(fileinclude({
-      prefix: '@@',
-      basepath: '@file'
-    })).on('error', console.log)
+    // Манифест
+    // Если флаг --dist без --norev
+    .pipe(gulpif(dist, gulpif(distRev, revReplace({
+      manifest: gulp.src('manifest/manifest.json', { allowEmpty: true }),
+    }))))
 
-    // Манифест.
-    // Если флаг --dist без --norev.
-    .pipe(gulpif(dist,
-      gulpif(!norev,
-        revReplace({manifest: gulp.src("manifest/manifest.json", {allowEmpty: true})})
-      )
-    ))
-
-    // Добавляет индентацию для заинклюженных блоков.
-    .pipe(gulpif(dist,
-      prettyHtml({
-        indent_size: 2
-      })
-    ))
-
-    // Выгрузка.
+    // Выгрузка
     .pipe(gulp.dest(buildHtml))
 
-    // browserSync.
-    .pipe(gulpif(!dist, browserSync.stream())); // Если нет флага --dist.
-});
+    // browserSync
+    .pipe(gulpif(!dist, browserSync.stream())); // Если нет флага --dist
+};
 
-gulp.task("css", function() {
-  return gulp.src("src/blocks/styles.scss")
+export const css = () => {
+  function isStyles(file) {
+    return file.basename === 'styles.css' || file.basename === 'styles.scss';
+  }
 
-    // Sourcemaps.
-    .pipe(gulpif(!dist, sourcemaps.init())) // Если нет флага --dist.
+  function isLibs(file) {
+    return file.basename === 'libs.css' || file.basename === 'libs.scss';
+  }
 
-    // Компилируем SASS.
-    .pipe(sass({outputStyle: "expanded"}).on("error", sass.logError))
+  return gulp.src(['src/blocks/**/*.scss', 'src/consts/*.scss', 'src/fonts/fonts.scss', 'src/mixins/*.scss', 'src/custom-libs/*.{scss, css}'])
 
-    // Переименовываем в styles.css.
-    .pipe(rename("styles.css"))
+    // Обработчик ошибок и вывод уведомления
+    .pipe(plumber({
+      errorHandler: notify.onError({
+        title: 'CSS',
+        message: 'Check your terminal',
+      }),
+    }))
 
-    // Если флаг --min, то сжимаем css.
-    .pipe(gulpif(min, 
-      postcss([
-        cssnano({
-          preset: "default"
-        })
-      ])
-    ))
+    // Если styles.scss, то делаем Sourcmaps
+    .pipe(gulpif(isStyles, sourcemaps.init()))
 
-    // Группируем медиазапросы.
+    // SASS
+    .pipe(sassInheritance({ dir: 'src/blocks/' })) // Ищем изменения в зависимостях
+
+    // Stylelint
+    .pipe(gulpStylelint({
+      customSyntax: 'postcss-scss',
+      reporters: [{
+        formatter: 'string',
+        console: true,
+      }],
+    }))
+
+    // Убираем всё, кроме style.scss и libs.scss
+    .pipe(filter((file) => {
+      return file.basename === 'styles.scss' || file.basename === 'libs.scss';
+    }))
+
+    .pipe(sass({ outputStyle: 'expanded' }))
+
+    // Если флаг --dist, то минифицируем
+    .pipe(gulpif(dist, gulpif(distMin, postcss([
+      cssnano({
+        preset: 'default',
+      }),
+    ]))))
+
+    // Группируем медиазапросы
     .pipe(postcss([
       mqpacker({
-        sort: sortCSSmq // Кастомный метод сортировки.
-      })
+        sort: sortCSSmq.desktopFirst, // Кастомный метод сортировки
+      }),
     ]))
 
-    // autoprefixer.
-    .pipe(autoprefixer({
-      cascade: false
-    }))
-
-    // Sourcemaps.
-    .pipe(gulpif(!dist, sourcemaps.write())) // Если нет флага --dist.
-
-    // Приписывает хэш в конце файла(styles-004da46867.css). Чтобы при обновлении сайта не приходилось очищать кэш.
-    // Если флаг --dist без --norev.
-    .pipe(gulpif(dist,
-      gulpif(!norev,
-        rev()
-      )
-    ))
-
-    // Выгрузка.
-    .pipe(gulp.dest(buildCss))
-
-    // Если флаг --dist без --norev.
-    .pipe(gulpif(dist,
-      gulpif(!norev,
-        combine(
-          // Создаёт манифест с новым названием.
-          rev.manifest("manifest/manifest.json", {
-            base: "manifest", // Базовый каталог для manifest.json. Можно было бы и обойтись без этой опции, но без неё не работает merge. 
-            merge: true // Чтобы манифесты не перезаписывались, а соединялись в один.
-          }),
-          // Выгружает файл манифеста в папку manifest.
-          gulp.dest("manifest")
-        )
-      )
-    ))
-
-    // Browsersync.
-    .pipe(gulpif(!dist, browserSync.stream())); // Если нет флага --dist.
-});
-
-gulp.task("cssLibs", function() {
-  return gulp.src("src/blocks/libs.scss")
-
-    // Компилируем SASS.
-    .pipe(sass({outputStyle: "expanded"}).on("error", sass.logError))
-
-    // Переименовываем в libs.css.
-    .pipe(rename("libs.css"))
-
-    // Минифицируем.
-    .pipe(postcss([
+    // Минифицируем если libs.scss
+    .pipe(gulpif(isLibs, postcss([
       cssnano({
-        preset: "default"
-      })
-    ]))
+        preset: 'default',
+      }),
+    ])))
+
+    // autoprefixer
+    .pipe(gulpif(isStyles, autoprefixer({
+      cascade: false,
+    })))
+
+    // Приписывает хэш в конце файла(styles-004da46867.css)
+    // Чтобы при обновлении сайта не приходилось очищать кэш
+    // Если флаг --dist и настройка distRev = true
+    .pipe(gulpif(dist, gulpif(distRev, rev())))
+
+    // Если styles.scss, то делаем Sourcmaps
+    .pipe(gulpif(isStyles, sourcemaps.write()))
 
     // Выгрузка.
     .pipe(gulp.dest(buildCss))
 
-    // Browsersync.
-    .pipe(gulpif(!dist, browserSync.stream())); // Если нет флага --dist.
-});
+    // Если флаг --dist и настройка distRev = true
+    .pipe(gulpif(dist, gulpif(distRev, combiner(
+      // Создаёт манифест с новым названием
+      rev.manifest('manifest/manifest.json', {
+        base: 'manifest', // Базовый каталог для manifest.json. Можно было бы и обойтись без этой опции, но без неё не работает merge
+        merge: true, // Чтобы манифесты не перезаписывались, а соединялись в один
+      }),
 
-gulp.task("js", function() {
-  return gulp.src("src/blocks/scripts.js")
+      // Выгружает файл манифеста в папку manifest
+      gulp.dest('manifest'),
+    ))))
 
-    // Собираем всё в один файл.
-    // // include("../../node_modules/jquery/dist/jquery.min.js").
-    .pipe(fileinclude({
-      prefix: '//',
-      basepath: '@file'
-    })).on('error', console.log)
+    // Browsersync
+    .pipe(gulpif(!dist, browserSync.stream())); // Если нет флага --dist
+};
 
-    // Приписывает хэш в конце файла(styles-004da46867.css). Чтобы при обновлении сайта не приходилось очищать кэш.
-    // Если флаг --dist без --norev.
-    .pipe(gulpif(dist,
-      gulpif(!norev,
-        rev()
-      )
-    ))
+export const js = () => {
+  let webpackDevtool;
+  let webpackMode;
+  let webpackMinimize;
 
-    .pipe(gulpif(min,
-      uglify()
-    ))
+  if (dist) {
+    webpackDevtool = false;
+    webpackMode = 'production';
+    webpackMinimize = true;
+  } else {
+    webpackDevtool = 'eval';
+    webpackMode = 'development';
+    webpackMinimize = false;
+  }
 
-    // Выгрузка.
-    .pipe(gulp.dest(buildJs))
+  const webpackConfig = {
+    mode: webpackMode,
+    devtool: webpackDevtool,
+    output: {
+      filename: 'scripts.js',
+    },
+    module: {
+      rules: [
+        {
+          test: /\.js$/,
+          exclude: /node_modules/,
+          use: {
+            loader: 'babel-loader',
+            options: {
+              presets: ['@babel/preset-env'],
+            },
+          },
+        },
+      ],
+    },
+    plugins: [
+      new ESLintPlugin(),
+    ],
+    optimization: {
+      minimize: webpackMinimize,
+    },
+    performance: {
+      hints: false,
+    },
+  };
 
-    // Если флаг --dist без --norev.
-    .pipe(gulpif(dist,
-      gulpif(!norev,
-        combine(
-          // Создаёт манифест с новым названием.
-          rev.manifest("manifest/manifest.json", {
-            base: "manifest", // Базовый каталог для manifest.json. Можно было бы и обойтись без этой опции, но без неё не работает merge. 
-            merge: true // Чтобы манифесты не перезаписывались, а соединялись в один.
-          }),
-          // Выгружает файл манифеста в папку manifest.
-          gulp.dest("manifest")
-        )
-      )
-    ))
+  return gulp.src('src/blocks/scripts.js')
 
-    // Browsersync.
-    .pipe(gulpif(!dist, browserSync.stream())); // Если нет флага --dist.
-});
-
-gulp.task("jsLibs", function() {
-  return gulp.src("src/blocks/libs.js")
-
-    // Собираем всё в один файл.
-    // // include("../../node_modules/jquery/dist/jquery.min.js").
-    .pipe(fileinclude({
-      prefix: '//',
-      basepath: '@file'
-    })).on('error', console.log)
-
-    // Минифицируем.
-    .pipe(uglify())
-
-    // Выгрузка.
-    .pipe(gulp.dest(buildJs))
-
-    // Browsersync.
-    .pipe(gulpif(!dist, browserSync.stream())); // Если нет флага --dist.
-});
-
-gulp.task("imgs", function() {
-  var smushitFilter = filter("**/*.{jpg,jpeg,png}", {restore: true})
-  return gulp.src("src/blocks/**/*.{jpg,jpeg,png,gif,ico}")
-
-    .pipe(smushitFilter) // Фильтруем поток.
-    .pipe(gulpif(dist, // Если есть флаг --dist.
-      smushit({
-        verbose: true // Подробный режим.
-      })
-    ))
-    .pipe(smushitFilter.restore) // Восстанавливаем поток.
-
-    // Выгрузка.
-    .pipe(gulp.dest(buildImgs))
-
-    // Browsersync.
-    .pipe(gulpif(!dist, browserSync.stream())); // Если нет флага --dist.
-});
-
-gulp.task("favicon", function() {
-  return gulp.src("src/favicon/*.*")
-
-    // Выгрузка.
-    .pipe(gulp.dest(buildFavicon))
-
-    // Browsersync.
-    .pipe(gulpif(!dist, browserSync.stream())); // Если нет флага --dist.
-});
-
-gulp.task("imgsWebp", function() {
-  return gulp.src("src/blocks/**/*.{jpg,jpeg,png,gif,ico}")
-
-    // Конвертирует изображение в webp и сжимает его.
-    .pipe(webp({
-      quality: 75
+    // Обработчик ошибок и вывод уведомления
+    .pipe(plumber({
+      errorHandler: notify.onError({
+        title: 'JS',
+        message: 'Check your terminal',
+      }),
     }))
 
-    // Выгрузка.
+    // Webpack
+    .pipe(gulpif(webpack, webpackStream(webpackConfig)))
+
+    // Приписывает хэш в конце файла(styles-004da46867.css)
+    // Чтобы при обновлении сайта не приходилось очищать кэш
+    // Если флаг --dist и настройка distRev = true
+    .pipe(gulpif(dist, gulpif(distRev, rev())))
+
+    // Выгрузка
+    .pipe(gulp.dest(buildJs))
+
+    // Если флаг --dist и настройка distRev = true
+    // Создаёт манифест с новым названием
+    // Выгружает файл манифеста в папку manifest
+    .pipe(gulpif(dist, gulpif(distRev, combiner(rev.manifest('manifest/manifest.json', {
+      base: 'manifest', // Базовый каталог для manifest.json. Можно было бы и обойтись без этой опции, но без неё не работает merge
+      merge: true, // Чтобы манифесты не перезаписывались, а соединялись в один
+    }), gulp.dest('manifest')))))
+
+    // Browsersync
+    .pipe(gulpif(!dist, browserSync.stream())); // Если нет флага --dist
+};
+
+export const images = () => {
+  const imageminFilter = filter('**/*.{jpg,jpeg,png}', { restore: true });
+  const webpFilter = filter('**/*.{jpg,jpeg,png,gif,ico}', { restore: true });
+
+  return gulp.src([
+    'src/blocks/**/*.{jpg,jpeg,png,gif,ico}',
+    'src/blocks/**/*.svg',
+    '!src/blocks/svg-sprite/*.svg',
+    '!src/blocks/fonts/**/*.svg',
+  ])
+
+    // Сжимает изображения, если есть флаг --dist и настройка distImgMin = true
+    .pipe(gulpif(dist, gulpif(distImgMin, imageminFilter))) // Фильтруем поток
+    .pipe(gulpif(dist, gulpif(distImgMin, imagemin([
+      mozjpeg({ quality: 95, progressive: true }),
+      optipng({ optimizationLevel: 5 }),
+    ], {
+      verbose: true,
+    }))))
+    .pipe(gulpif(dist, gulpif(distImgMin, imageminFilter.restore))) // Восстанавливаем поток
+
+    // webp
+    .pipe(gulpif(webpImg, webpFilter))
+    // Выгрузка изначальных изображений, если webp включен
+    .pipe(gulpif(webpImg, gulp.dest(buildImgs)))
+    .pipe(gulpif(webpImg, webp({
+      quality: 85,
+    })))
+    .pipe(gulpif(webpImg, webpFilter.restore))
+
+    // Выгрузка
     .pipe(gulp.dest(buildImgs))
 
-    // Browsersync.
-    .pipe(gulpif(!dist, browserSync.stream())); // Если нет флага --dist.
-});
+    // Browsersync
+    .pipe(gulpif(!dist, browserSync.stream())); // Если нет флага --dist
+};
 
-// Из-за того, что smushit не умеет обрабатывать svg пришлось сделать для них отдельный таск.
-gulp.task("imgsSvg", function() {
-  return gulp.src(["src/blocks/**/*.svg", "!src/blocks/svg-sprite/*.svg", "!src/blocks/fonts/**/*.svg"])
+export const svg = () => {
+  /* Собирает все svg файлы и сохраняет их в файл svg-sprite.svg
+  <svg class=""><use xlink:href="images/sprite.svg#"></use></svg>
+  https://www.youtube.com/watch?v=ihAHwkl0KAI и https://habrahabr.ru/post/272505/ */
 
-    // Выгрузка.
-    .pipe(gulp.dest(buildImgs))
+  return gulp.src('src/svg-sprite/*.svg')
 
-    // Browsersync.
-    .pipe(gulpif(!dist, browserSync.stream())); // Если нет флага --dist.
-});
+    // Удаляет атрибуты из svg файлов, чтобы можно было их менять с помощью css
+    .pipe(cheerio({
+      run: ($) => {
+        $('[fill]').removeAttr('fill');
+        $('[fill-opacity]').removeAttr('fill-opacity');
+        $('[stroke]').removeAttr('stroke');
+        $('[stroke-dasharray]').removeAttr('stroke-dasharray');
+        $('[stroke-dashoffset]').removeAttr('stroke-dashoffset');
+        $('[stroke-linecap]').removeAttr('stroke-linecap');
+        $('[stroke-linejoin]').removeAttr('stroke-linejoin');
+        $('[stroke-miterlimit]').removeAttr('stroke-miterlimit');
+        $('[stroke-opacity]').removeAttr('stroke-opacity');
+        $('[stroke-width]').removeAttr('stroke-width');
+        $('[font-family]').removeAttr('font-family');
+        $('[font-size]').removeAttr('font-size');
+        $('[font-size-adjust]').removeAttr('font-size-adjust');
+        $('[font-stretch]').removeAttr('font-stretch');
+        $('[font-style]').removeAttr('font-style');
+        $('[font-variant]').removeAttr('font-variant');
+        $('[font-weight]').removeAttr('font-weight');
+        $('[style]').removeAttr('style');
+      },
+      parserOptions: { xmlMode: true },
+    }))
 
-gulp.task("fonts", function() {
-  return gulp.src("src/fonts/**/*.{woff,woff2,ttf,eot,svg}")
+    // У cheerio есть один баг — иногда он преобразовывает символ '>' в кодировку '&gt;'
+    .pipe(replace('&gt;', '>'))
 
-    // Выгрузка.
+    // Делаем спрайт
+    .pipe(svgSprite({
+      mode: {
+        symbol: {
+          sprite: 'sprite.svg',
+          dest: './', // Убираем папку с названием мода
+        },
+      },
+      shape: { // Убирает префикс с путями
+        id: {
+          generator: (name) => {
+            return path.basename(name, '.svg');
+          },
+        },
+      },
+    }))
+
+    // Выгрузка
+    .pipe(gulp.dest(buildSvg))
+
+    // browserSync
+    .pipe(gulpif(!dist, browserSync.stream())); // Если нет флага --dist
+};
+
+export const fonts = () => {
+  return gulp.src('src/fonts/**/*.{woff,woff2,ttf,eot,svg}')
+
+    // Выгрузка
     .pipe(gulp.dest(buildFonts))
 
-    // browserSync.
-    .pipe(gulpif(!dist, browserSync.stream())); // Если нет флага --dist.
-});
+    // browserSync
+    .pipe(gulpif(!dist, browserSync.stream())); // Если нет флага --dist
+};
 
-gulp.task("clean", function() {
-  return del("build");
-});
+export const resources = () => {
+  // favicon, json, php and etc
 
-gulp.task("cleanManifest", function(c) {
-  return del("manifest");
-});
+  return gulp.src('src/resources/**/*.*')
 
-/* Собирает все svg файлы и сохраняет их в файл svg-sprite.svg.
-<svg class="inline-svg-icon browser"><use xlink:href="imgs/svg-sprite.svg#baseball"></use></svg>
-https://www.youtube.com/watch?v=ihAHwkl0KAI и https://habrahabr.ru/post/272505/ */
-gulp.task("svg", function() {
-  return gulp.src("src/svg-sprite/*.svg")
+    // Выгрузка
+    .pipe(gulp.dest(buildResources))
 
-    // Удаляет атрибуты из svg файлов, чтобы можно было их менять с помощью css.
-    .pipe(cheerio({
-      run: function ($) {
-        $("[fill]").removeAttr("fill");
-        $("[fill-rule]").removeAttr("fill-rule");
-        $("[clip-rule]").removeAttr("clip-rule");
-        $("[transform]").removeAttr("transform");
-        $("[fill-opacity]").removeAttr("fill-opacity");
-        $("[stroke]").removeAttr("stroke");
-        $("[stroke-dasharray]").removeAttr("stroke-dasharray");
-        $("[stroke-dashoffset]").removeAttr("stroke-dashoffset");
-        $("[stroke-linecap]").removeAttr("stroke-linecap");
-        $("[stroke-linejoin]").removeAttr("stroke-linejoin");
-        $("[stroke-miterlimit]").removeAttr("stroke-miterlimit");
-        $("[stroke-opacity]").removeAttr("stroke-opacity");
-        $("[stroke-width]").removeAttr("stroke-width");
-        $("[font-family]").removeAttr("font-family");
-        $("[font-size]").removeAttr("font-size");
-        $("[font-size-adjust]").removeAttr("font-size-adjust");
-        $("[font-stretch]").removeAttr("font-stretch");
-        $("[font-style]").removeAttr("font-style");
-        $("[font-variant]").removeAttr("font-variant");
-        $("[font-weight]").removeAttr("font-weight");
-        $("[style]").removeAttr("style");
-      }
-    }))
+    // browserSync
+    .pipe(gulpif(!dist, browserSync.stream())); // Если нет флага --dist
+};
 
-    // У cheerio есть один баг — иногда он преобразовывает символ '>' в кодировку '&gt;'.
-    .pipe(replace("&gt;", ">"))
-
-    // Делаем спрайт.
-    .pipe(svgstore())
-
-    // Выгрузка.
-    .pipe(gulp.dest(buildSvg));
-});
-
-gulp.task("deploy", function() {
-  var conn = ftp.create({
-    host:      ftpHost,
-    user:      ftpUser,
-    password:  ftpPass,
-    parallel:  10,
-    log: gutil.log
-  });
-
-  var globs = ["build/**"];
-  return gulp.src(globs, {buffer: false})
-  .pipe(conn.dest(ftpDest));
-});
-
-gulp.task("watch", function(c) {
-  if (!dist) { // Проверяет на наличие флага.
-    gulp.watch(["src/*.html", "src/blocks/**/*.html"], gulp.series("html"));
-    gulp.watch(["src/blocks/**/*.scss", "src/consts/*.scss", "src/fonts/fonts.scss", "src/mixins/*.scss", "src/custom-libs/*.{scss, css}"], gulp.series("css"));
-    gulp.watch(["src/blocks/libs.scss", "src/custom-libs/**/*.{scss, css}"], gulp.series("cssLibs"));
-    gulp.watch(["src/blocks/**/*.js", "src/blocks/scripts.js"], gulp.series("js"));
-    gulp.watch("src/blocks/libs.js", gulp.series("jsLibs"));
-    gulp.watch("src/svg-sprite/*.svg", gulp.series("svg"));
-    gulp.watch("src/custom-libs/**/*.*", gulp.series("css", "js"));
-    gulp.watch("src/favicon/*.*", gulp.series("favicon"));
+export const watchTask = (cb) => {
+  if (!dist) { // Проверяет на наличие флага
+    gulp.watch(['src/**/*.{html,njk}'], html);
+    gulp.watch(['src/blocks/**/*.scss', 'src/consts/*.scss', 'src/fonts/fonts.scss', 'src/mixins/*.scss', 'src/custom-libs/*.{scss, css}'], css);
+    gulp.watch(['src/blocks/**/*.js', 'src/blocks/scripts.js'], js);
+    gulp.watch('src/svg-sprite/*.svg', svg);
+    gulp.watch('src/custom-libs/**/*.*', gulp.series('css', 'js'));
+    gulp.watch('src/resources/**/*.*', resources);
 
     // Наблюдает за изображениями. При добавлении - переносит в build/imgs, при удалении - удаляет из build/imgs. https://github.com/gulpjs/gulp/blob/4.0/docs/recipes/handling-the-delete-event-on-watch.md
-    gulp.watch("src/blocks/**/*.{jpg,jpeg,png,gif,svg}", gulp.series("imgs", "imgsSvg", "imgsWebp")).on("unlink", function(filepath) {
-      var filePathFromSrc = path.relative(path.resolve("src/blocks/"), filepath);
-      var destFilePath = path.resolve(buildImgs, filePathFromSrc);
-      var destFilePathWebp = path.parse(destFilePath);
-      var destFilePathWebp = destFilePathWebp.dir + "\\" + destFilePathWebp.name + ".webp";
+    gulp.watch('src/blocks/**/*.{jpg,jpeg,png,gif,ico,svg}', images).on('unlink', (filepath) => {
+      const filePathFromSrc = path.relative(path.resolve('src/blocks/'), filepath);
+      const destFilePath = path.resolve(buildImgs, filePathFromSrc);
+      const destFilePathWebp = `${path.parse(destFilePath).dir}\\${path.parse(destFilePath).name}.webp`;
+
       del.sync(destFilePath);
       del.sync(destFilePathWebp);
     });
 
-    // Тоже самое, только со шрифтами.
-    gulp.watch("src/fonts/**/*.{woff,woff2,ttf,eot}", gulp.series("fonts")).on("unlink", function(filepath) {
-      var filePathFromSrc = path.relative(path.resolve("src/blocks/fonts"), filepath);
-      var destFilePath = path.resolve(buildFonts, filePathFromSrc);
+    // Тоже самое, только со шрифтами
+    gulp.watch('src/fonts/**/*.{woff,woff2,ttf,eot}', fonts).on('unlink', (filepath) => {
+      const filePathFromSrc = path.relative(path.resolve('src/blocks'), filepath);
+      const destFilePath = path.resolve(buildFonts, filePathFromSrc);
       del.sync(destFilePath);
     });
   } else {
-    c(); // Вызывает callback, чтобы gulp не ругался.
+    cb(); // Вызывает callback, чтобы gulp не ругался
   }
-});
+};
 
-gulp.task("build",
-  gulp.series(
-    "clean", "cssLibs", "css", "jsLibs", "js", "html", "imgs", "imgsSvg", "imgsWebp", "fonts", "svg", "favicon", "cleanManifest"
-  )
+export const clean = () => {
+  return del(['build', 'manifest']);
+};
+
+// eslint-disable-next-line consistent-return
+export const cleanManifest = (cb) => {
+  if (dist) {
+    return del('manifest');
+  }
+
+  cb();
+};
+
+export default gulp.series(
+  clean,
+  css,
+  js,
+  html,
+  images,
+  svg,
+  fonts,
+  resources,
+  cleanManifest,
+  gulp.parallel(browserSyncTask, watchTask),
 );
-
-gulp.task("default", gulp.series("build", gulp.parallel("watch", "browser-sync")));

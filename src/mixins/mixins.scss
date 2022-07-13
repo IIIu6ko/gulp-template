@@ -1,17 +1,3 @@
-// This mixin can be used to set the object-fit:
-// @include object-fit(contain);
-// or object-fit and object-position:
-// @include object-fit(cover, top);
-@mixin object-fit($fit: fill, $position: null){
-  object-fit: $fit;
-  @if $position {
-    object-position: $position;
-    font-family: 'object-fit: #{$fit}; object-position: #{$position}';
-  } @else {
-    font-family: 'object-fit: #{$fit}';
-  }
-}
-
 // Медиа-запросы
 // @include lg {
 //   background: red;
