@@ -38,6 +38,7 @@ import plumber from 'gulp-plumber'; // Обработка ошибок
 import webp from 'gulp-webp'; // Конвертирует изображение в webp
 import imagemin, { mozjpeg, optipng } from 'gulp-imagemin'; // Сжатие изображений
 import filter from 'gulp-filter'; // Проверка на формат изображений
+import rename from 'gulp-rename'; // Изменение путей
 
 // Работа с SVG-спрайтами
 import svgSprite from 'gulp-svg-sprite'; // Спрайты из SVG
@@ -84,7 +85,7 @@ export const browserSyncTask = (cb) => {
 };
 
 export const html = () => {
-  return gulp.src('src/**/*.html', { base: 'src' })
+  return gulp.src('src/**/*.html')
 
     // Обработчик ошибок и вывод уведомления
     .pipe(plumber({
@@ -99,8 +100,8 @@ export const html = () => {
     .pipe(nunjucks({ path: 'src' })) // Компилируем в HTML
     .pipe(cached('njk'))
 
-    // Убираем из потока файлы из папки blocks
-    .pipe(filter(['**', '!src/blocks/**/*.*']))
+    // Убираем из потока файлы из папки components
+    .pipe(filter(['**', '!src/components/**/*.*']))
 
     // Форматируем HTML после компиляции Nunjucks
     .pipe(beautify.html({
@@ -134,6 +135,11 @@ export const html = () => {
       manifest: gulp.src('manifest/manifest.json', { allowEmpty: true }),
     }))))
 
+    // Убираем папку pages из пути, чтобы выгружать всё в корень build
+    .pipe(rename((renamePath) => {
+      renamePath.dirname = '.';
+    }))
+
     // Выгрузка
     .pipe(gulp.dest(buildHtml))
 
@@ -150,13 +156,20 @@ export const css = () => {
     return file.basename === 'libs.css' || file.basename === 'libs.scss';
   }
 
-  return gulp.src(['src/blocks/**/*.scss', 'src/consts/*.scss', 'src/fonts/fonts.scss', 'src/mixins/*.scss', 'src/custom-libs/*.{scss, css}'])
+  return gulp.src(
+    [
+      'src/styles.scss',
+      'src/libs.scss',
+      'src/components/**/*.scss',
+      'src/elements/**/*.scss',
+      'src/services/**/*.scss',
+    ],
+  )
 
     // Обработчик ошибок и вывод уведомления
     .pipe(plumber({
       errorHandler: notify.onError({
         title: 'CSS',
-        message: 'Check your terminal',
       }),
     }))
 
@@ -164,7 +177,7 @@ export const css = () => {
     .pipe(gulpif(isStyles, sourcemaps.init()))
 
     // SASS
-    .pipe(sassInheritance({ dir: 'src/blocks/' })) // Ищем изменения в зависимостях
+    .pipe(sassInheritance({ dir: 'src/components/' })) // Ищем изменения в зависимостях
 
     // Stylelint
     .pipe(gulpStylelint({
@@ -281,7 +294,7 @@ export const js = () => {
     },
   };
 
-  return gulp.src('src/blocks/scripts.js')
+  return gulp.src('src/scripts.js')
 
     // Обработчик ошибок и вывод уведомления
     .pipe(plumber({
@@ -318,12 +331,15 @@ export const images = () => {
   const imageminFilter = filter('**/*.{jpg,jpeg,png}', { restore: true });
   const webpFilter = filter('**/*.{jpg,jpeg,png,gif,ico}', { restore: true });
 
-  return gulp.src([
-    'src/blocks/**/*.{jpg,jpeg,png,gif,ico}',
-    'src/blocks/**/*.svg',
-    '!src/blocks/svg-sprite/*.svg',
-    '!src/blocks/fonts/**/*.svg',
-  ])
+  return gulp.src('src/components/**/assets/*.{jpg,jpeg,png,gif,ico,svg}')
+
+    // Убираем папку assets из пути
+    .pipe(rename((renamePath) => {
+      const dirs = renamePath.dirname.split(path.sep);
+
+      dirs.splice(1, 1);
+      renamePath.dirname = dirs.join(path.sep);
+    }))
 
     // Сжимает изображения, если есть флаг --dist и настройка distImgMin = true
     .pipe(gulpif(dist, gulpif(distImgMin, imageminFilter))) // Фильтруем поток
@@ -335,10 +351,11 @@ export const images = () => {
     }))))
     .pipe(gulpif(dist, gulpif(distImgMin, imageminFilter.restore))) // Восстанавливаем поток
 
-    // webp
-    .pipe(gulpif(webpImg, webpFilter))
     // Выгрузка изначальных изображений, если webp включен
     .pipe(gulpif(webpImg, gulp.dest(buildImgs)))
+
+    // webp
+    .pipe(gulpif(webpImg, webpFilter))
     .pipe(gulpif(webpImg, webp({
       quality: 85,
     })))
@@ -356,7 +373,7 @@ export const svg = () => {
   <svg class=""><use xlink:href="images/sprite.svg#"></use></svg>
   https://www.youtube.com/watch?v=ihAHwkl0KAI и https://habrahabr.ru/post/272505/ */
 
-  return gulp.src('src/svg-sprite/*.svg')
+  return gulp.src('src/services/svg-sprite/*.svg')
 
     // Удаляет атрибуты из svg файлов, чтобы можно было их менять с помощью css
     .pipe(cheerio({
@@ -411,7 +428,7 @@ export const svg = () => {
 };
 
 export const fonts = () => {
-  return gulp.src('src/fonts/**/*.{woff,woff2,ttf,eot,svg}')
+  return gulp.src('src/services/fonts/**/*.{woff,woff2,ttf,eot,svg}')
 
     // Выгрузка
     .pipe(gulp.dest(buildFonts))
@@ -435,28 +452,17 @@ export const resources = () => {
 export const watchTask = (cb) => {
   if (!dist) { // Проверяет на наличие флага
     gulp.watch(['src/**/*.{html,njk}'], html);
-    gulp.watch(['src/blocks/**/*.scss', 'src/consts/*.scss', 'src/fonts/fonts.scss', 'src/mixins/*.scss', 'src/custom-libs/*.{scss, css}'], css);
-    gulp.watch(['src/blocks/**/*.js', 'src/blocks/scripts.js'], js);
-    gulp.watch('src/svg-sprite/*.svg', svg);
-    gulp.watch('src/custom-libs/**/*.*', gulp.series('css', 'js'));
+    gulp.watch([
+      'src/styles.scss',
+      'src/libs.scss',
+      'src/components/**/*.scss',
+      'src/elements/**/*.scss',
+      'src/services/**/*.scss',
+    ], css);
+    gulp.watch(['src/components/**/*.js', 'src/scripts.js'], js);
+    gulp.watch('src/services/svg-sprite/*.svg', svg);
+    gulp.watch('src/services/custom-libs/**/*.*', gulp.series('css', 'js'));
     gulp.watch('src/resources/**/*.*', resources);
-
-    // Наблюдает за изображениями. При добавлении - переносит в build/imgs, при удалении - удаляет из build/imgs. https://github.com/gulpjs/gulp/blob/4.0/docs/recipes/handling-the-delete-event-on-watch.md
-    gulp.watch('src/blocks/**/*.{jpg,jpeg,png,gif,ico,svg}', images).on('unlink', (filepath) => {
-      const filePathFromSrc = path.relative(path.resolve('src/blocks/'), filepath);
-      const destFilePath = path.resolve(buildImgs, filePathFromSrc);
-      const destFilePathWebp = `${path.parse(destFilePath).dir}\\${path.parse(destFilePath).name}.webp`;
-
-      del.sync(destFilePath);
-      del.sync(destFilePathWebp);
-    });
-
-    // Тоже самое, только со шрифтами
-    gulp.watch('src/fonts/**/*.{woff,woff2,ttf,eot}', fonts).on('unlink', (filepath) => {
-      const filePathFromSrc = path.relative(path.resolve('src/blocks'), filepath);
-      const destFilePath = path.resolve(buildFonts, filePathFromSrc);
-      del.sync(destFilePath);
-    });
   } else {
     cb(); // Вызывает callback, чтобы gulp не ругался
   }
