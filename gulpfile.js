@@ -463,6 +463,8 @@ export const watchTask = (cb) => {
     gulp.watch('src/services/svg-sprite/*.svg', svg);
     gulp.watch('src/services/custom-libs/**/*.*', gulp.series('css', 'js'));
     gulp.watch('src/resources/**/*.*', resources);
+    gulp.watch('src/components/**/assets/*.{jpg,jpeg,png,gif,ico,svg}', images);
+    gulp.watch('src/services/fonts/**/*.{woff,woff2,ttf,eot}', fonts);
   } else {
     cb(); // Вызывает callback, чтобы gulp не ругался
   }
