@@ -3,7 +3,11 @@
 @import "services/fonts/fonts.scss";
 @import "services/mixins/mixins.scss";
 
-// elements
-@import "elements/page.scss";
+// simple
+@import "components/simple/page.scss";
 
-// components
+// embedded
+/* @import "components/embedded/*"; */
+
+// complex
+/* @import "components/complex/*"; */

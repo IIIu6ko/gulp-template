@@ -15,6 +15,7 @@ import htmlhint from 'gulp-htmlhint'; // HTML линтер
 import beautify from 'gulp-beautify'; // Форматирует HTML после сборки
 import nunjucks from 'gulp-nunjucks-render';
 import nunjucksInheritance from 'gulp-nunjucks-inheritance';
+import EmbedTag from 'nunjucks-embed';
 import cached from 'gulp-cached';
 
 // css
@@ -65,9 +66,13 @@ const buildResources = 'build/resources';
 // Настройки
 const distMin = true;
 const distRev = true;
-const distImgMin = true;
-const webpImg = true;
+const distImgMin = false;
+const webpImg = false;
 const webpack = true;
+
+const manageEnvironment = (environment) => {
+  environment.addExtension('EmbedTag', new EmbedTag());
+};
 
 export const browserSyncTask = (cb) => {
   if (!dist) {
@@ -91,13 +96,19 @@ export const html = () => {
     .pipe(plumber({
       errorHandler: notify.onError({
         title: 'HTML',
-        message: 'Check your terminal',
       }),
     }))
 
     // Nunjucks
     .pipe(nunjucksInheritance({ base: 'src' })) // Ищем изменения в зависимостях
-    .pipe(nunjucks({ path: 'src' })) // Компилируем в HTML
+    // Компилируем в HTML
+    .pipe(nunjucks({
+      path: 'src',
+      envOptions: {
+        autoescape: false, // Нужно для работы embed
+      },
+      manageEnv: manageEnvironment,
+    }))
     .pipe(cached('njk'))
 
     // Убираем из потока файлы из папки components
@@ -161,7 +172,6 @@ export const css = () => {
       'src/styles.scss',
       'src/libs.scss',
       'src/components/**/*.scss',
-      'src/elements/**/*.scss',
       'src/services/**/*.scss',
     ],
   )
@@ -173,8 +183,8 @@ export const css = () => {
       }),
     }))
 
-    // Если styles.scss, то делаем Sourcmaps
-    .pipe(gulpif(isStyles, sourcemaps.init()))
+    // Если нет флага --dist и styles.scss, то делаем Sourcmaps
+    .pipe(gulpif(!dist, gulpif(isStyles, sourcemaps.init())))
 
     // SASS
     .pipe(sassInheritance({ dir: 'src/components/' })) // Ищем изменения в зависимостях
@@ -226,8 +236,8 @@ export const css = () => {
     // Если флаг --dist и настройка distRev = true
     .pipe(gulpif(dist, gulpif(distRev, rev())))
 
-    // Если styles.scss, то делаем Sourcmaps
-    .pipe(gulpif(isStyles, sourcemaps.write()))
+    // Если нет флага --dist и styles.scss, то делаем Sourcmaps
+    .pipe(gulpif(!dist, gulpif(isStyles, sourcemaps.write())))
 
     // Выгрузка.
     .pipe(gulp.dest(buildCss))
@@ -456,7 +466,6 @@ export const watchTask = (cb) => {
       'src/styles.scss',
       'src/libs.scss',
       'src/components/**/*.scss',
-      'src/elements/**/*.scss',
       'src/services/**/*.scss',
     ], css);
     gulp.watch(['src/components/**/*.js', 'src/scripts.js'], js);

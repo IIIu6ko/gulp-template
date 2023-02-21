@@ -5,7 +5,8 @@
     "import/extensions": "off",
     "arrow-body-style": ["error", "always"],
     "no-param-reassign": "off",
-    "no-plusplus": "off"
+    "no-plusplus": "off",
+    "no-console": "off"
   },
   "env": {
     "browser": true,

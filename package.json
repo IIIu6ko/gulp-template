@@ -48,6 +48,7 @@
     "gulp-svg-sprite": "^1.5.0",
     "gulp-webp": "^4.0.1",
     "node-css-mqpacker": "^9.0.0",
+    "nunjucks-embed": "^0.1.0",
     "path": "^0.12.7",
     "sass": "^1.52.1",
     "sort-css-media-queries": "^2.0.4",
