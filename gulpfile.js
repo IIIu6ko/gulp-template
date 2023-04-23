@@ -343,11 +343,9 @@ export const images = () => {
 
   return gulp.src('src/components/**/assets/*.{jpg,jpeg,png,gif,ico,svg}')
 
-    // Убираем папку assets из пути
+    // Убираем папку assets и вида компонента из пути
     .pipe(rename((renamePath) => {
-      const dirs = renamePath.dirname.split(path.sep);
-
-      dirs.splice(1, 1);
+      const dirs = renamePath.dirname.split(path.sep).slice(1, 2);
       renamePath.dirname = dirs.join(path.sep);
     }))
 

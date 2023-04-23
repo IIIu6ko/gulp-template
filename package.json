@@ -1,6 +1,6 @@
 {
   "name": "gulp-template",
-  "version": "2.0.0",
+  "version": "2.3.0",
   "description": "HTML, CSS, JS, Nunjucks, SCSS, Webpack, ES6, BEM",
   "author": "IIIu6ko",
   "type": "module",
@@ -12,6 +12,9 @@
   "browserslist": [
     "last 10 versions"
   ],
+  "scripts": {
+    "prepare": "husky install"
+  },
   "devDependencies": {
     "@babel/core": "^7.18.0",
     "@babel/preset-env": "^7.18.0",
@@ -47,6 +50,9 @@
     "gulp-sourcemaps": "^3.0.0",
     "gulp-svg-sprite": "^1.5.0",
     "gulp-webp": "^4.0.1",
+    "htmlhint": "^1.1.4",
+    "husky": "^8.0.0",
+    "lint-staged": "^13.2.1",
     "node-css-mqpacker": "^9.0.0",
     "nunjucks-embed": "^0.1.0",
     "path": "^0.12.7",
