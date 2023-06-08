@@ -64,10 +64,10 @@ const buildSvg = 'build/images';
 const buildResources = 'build/resources';
 
 // Настройки
-const distMin = true;
-const distRev = true;
-const distImgMin = false;
-const webpImg = false;
+const distMin = true; // Минификация CSS
+const distRev = false; // Хэш
+const distImgMin = false; // Сжатие изображений
+const webpImg = false; // Создание WEBP изображений
 const webpack = true;
 
 const manageEnvironment = (environment) => {

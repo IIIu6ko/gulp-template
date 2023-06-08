@@ -1,3 +1,3 @@
 /* begin scripts */
-/* import './page/page.js'; */
+/* import './components/complex/...'; */
 /* end scripts */

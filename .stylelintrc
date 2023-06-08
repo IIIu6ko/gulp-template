@@ -13,6 +13,7 @@
     "color-function-notation": null,
     "alpha-value-notation": null,
     "selector-type-no-unknown": null,
-    "value-no-vendor-prefix": [true, { "ignoreValues": ["box"] }]
+    "value-no-vendor-prefix": [true, { "ignoreValues": ["box"] }],
+    "media-feature-range-notation": "prefix"
   }
 }
